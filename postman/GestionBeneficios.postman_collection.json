@@ -1,0 +1,135 @@
+{
+  "info": {
+    "name": "Gestion Beneficios ADEX",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5280" },
+    { "key": "token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/health"
+      }
+    },
+    {
+      "name": "Auth Dev Token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "if (j.access_token) pm.collectionVariables.set('token', j.access_token);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userName\": \"admin\",\n  \"role\": \"Administrador\"\n}"
+        },
+        "url": "{{baseUrl}}/api/v1/auth/dev-token"
+      }
+    },
+    {
+      "name": "Dashboard KPIs",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/api/v1/dashboard/kpis"
+      }
+    },
+    {
+      "name": "Empresas Search",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/api/v1/empresas?q=&page=1&pageSize=20"
+      }
+    },
+    {
+      "name": "Empresas Sync Catalog",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/api/v1/empresas/sync"
+      }
+    },
+    {
+      "name": "Alumnos Create",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"codigoAlumno\": \"A001\",\n  \"nombres\": \"Ana\",\n  \"apellidos\": \"Pérez\",\n  \"carrera\": \"Admin\",\n  \"correo\": \"ana@example.com\"\n}"
+        },
+        "url": "{{baseUrl}}/api/v1/alumnos"
+      }
+    },
+    {
+      "name": "Contrataciones Create",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"empresaId\": 1,\n  \"alumnoId\": 1,\n  \"anio\": 2026,\n  \"mesContratacion\": 1,\n  \"fechaInicio\": \"2026-01-15\",\n  \"fechaFin\": \"2026-04-15\",\n  \"sueldo\": 1300,\n  \"perfilSolicitado\": \"Practicante\"\n}"
+        },
+        "url": "{{baseUrl}}/api/v1/contrataciones"
+      }
+    },
+    {
+      "name": "Puntos Resumen",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/api/v1/puntos/resumen/1"
+      }
+    },
+    {
+      "name": "Beneficios List",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/api/v1/beneficios?soloActivos=true"
+      }
+    },
+    {
+      "name": "Canjes Create",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"empresaId\": 1,\n  \"beneficioId\": 1,\n  \"idempotencyKey\": \"demo-001\"\n}"
+        },
+        "url": "{{baseUrl}}/api/v1/canjes"
+      }
+    },
+    {
+      "name": "Auditoria",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/api/v1/auditoria?page=1&pageSize=50"
+      }
+    }
+  ]
+}

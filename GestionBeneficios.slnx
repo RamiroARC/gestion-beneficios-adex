@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GestionBeneficios.Api/GestionBeneficios.Api.csproj" />
+    <Project Path="src/GestionBeneficios.Application/GestionBeneficios.Application.csproj" />
+    <Project Path="src/GestionBeneficios.Domain/GestionBeneficios.Domain.csproj" />
+    <Project Path="src/GestionBeneficios.Infrastructure/GestionBeneficios.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GestionBeneficios.Application.Tests/GestionBeneficios.Application.Tests.csproj" />
+    <Project Path="tests/GestionBeneficios.Domain.Tests/GestionBeneficios.Domain.Tests.csproj" />
+  </Folder>
+</Solution>

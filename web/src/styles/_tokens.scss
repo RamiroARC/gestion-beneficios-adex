@@ -1,0 +1,45 @@
+:root {
+  --adex-blue: #003b70;
+  --adex-blue-hover: #002a52;
+  --adex-blue-active: #1a5a8a;
+  --adex-blue-soft: #e8eef4;
+  --adex-red: #c8102e;
+  --adex-white: #ffffff;
+  --adex-text: #263238;
+  --adex-text-muted: #5c6b73;
+  --adex-bg: #f5f7fa;
+  --adex-border: #d9dee5;
+
+  --adex-success: #2e7d32;
+  --adex-success-container: #e8f5e9;
+  --adex-warning: #ed8b00;
+  --adex-warning-container: #fff4e5;
+  --adex-error: #c62828;
+  --adex-error-container: #fdecea;
+  --adex-info: #1565c0;
+  --adex-info-container: #e3f2fd;
+
+  --gb-space-1: 4px;
+  --gb-space-2: 8px;
+  --gb-space-3: 12px;
+  --gb-space-4: 16px;
+  --gb-space-5: 24px;
+  --gb-space-6: 32px;
+
+  --gb-radius: 12px;
+  --gb-radius-sm: 8px;
+
+  --gb-success: var(--adex-success);
+  --gb-success-container: var(--adex-success-container);
+  --gb-warning: var(--adex-warning);
+  --gb-warning-container: var(--adex-warning-container);
+  --gb-info: var(--adex-info);
+  --gb-info-container: var(--adex-info-container);
+
+  --gb-sidebar-width: 248px;
+  --gb-sidebar-collapsed: 76px;
+  --gb-toolbar-height: 64px;
+  --gb-control-height: 40px;
+  --gb-control-width: 220px;
+  --gb-topnav-height: 64px;
+}

@@ -1,0 +1,40 @@
+@use '@angular/material' as mat;
+
+html {
+  height: 100%;
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$azure-palette,
+        tertiary: mat.$blue-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    )
+  );
+}
+
+:root {
+  --mat-sys-primary: var(--adex-blue);
+  --mat-sys-on-primary: var(--adex-white);
+  --mat-sys-primary-container: var(--adex-blue-soft);
+  --mat-sys-on-primary-container: var(--adex-blue);
+  --mat-sys-secondary: var(--adex-blue);
+  --mat-sys-on-secondary: var(--adex-white);
+  --mat-sys-secondary-container: var(--adex-blue-active);
+  --mat-sys-on-secondary-container: var(--adex-white);
+  --mat-sys-surface: var(--adex-white);
+  --mat-sys-on-surface: var(--adex-text);
+  --mat-sys-on-surface-variant: var(--adex-text-muted);
+  --mat-sys-background: var(--adex-bg);
+  --mat-sys-on-background: var(--adex-text);
+  --mat-sys-surface-container: var(--adex-bg);
+  --mat-sys-surface-container-low: var(--adex-white);
+  --mat-sys-surface-container-high: var(--adex-white);
+  --mat-sys-outline: var(--adex-border);
+  --mat-sys-outline-variant: var(--adex-border);
+  --mat-sys-error: var(--adex-error);
+  --mat-sys-on-error: var(--adex-white);
+  --mat-sys-error-container: var(--adex-error-container);
+  --mat-sys-on-error-container: var(--adex-error);
+}

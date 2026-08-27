@@ -1,0 +1,17 @@
+*.db
+*.db-shm
+*.db-wal
+bin/
+obj/
+.vs/
+*.user
+*.suo
+node_modules/
+web/node_modules/
+web/dist/
+web/.angular/
+.idea/
+.DS_Store
+TestResults/
+**/appsettings.*.local.json
+tmp/

@@ -1,0 +1,53 @@
+.table-wrap {
+  .mat-mdc-header-row {
+    background: var(--adex-blue);
+  }
+
+  .mat-mdc-header-cell {
+    color: var(--adex-white);
+    font: var(--mat-sys-label-large);
+    font-weight: 500;
+  }
+
+  .mat-mdc-row.row-selectable {
+    cursor: pointer;
+  }
+
+  .mat-mdc-row:hover .mat-mdc-cell {
+    background: var(--adex-blue-soft);
+  }
+
+  .mat-mdc-row.row-selected .mat-mdc-cell {
+    background: var(--adex-blue-soft);
+  }
+
+  .mat-mdc-cell {
+    border-bottom-color: var(--adex-border);
+    color: var(--adex-text);
+  }
+}
+
+.table-card mat-card,
+mat-card.table-card {
+  border: 1px solid var(--adex-border);
+  box-shadow: 0 1px 2px rgb(0 59 112 / 6%);
+}
+
+.btn-critical {
+  --mdc-filled-button-container-color: var(--adex-red);
+  --mdc-filled-button-label-text-color: var(--adex-white);
+}
+
+.gb-snack-error {
+  --mat-snackbar-container-color: var(--adex-error-container);
+  --mat-snackbar-supporting-text-color: var(--adex-error);
+}
+
+.gb-snack-success {
+  --mat-snackbar-container-color: var(--adex-success-container);
+  --mat-snackbar-supporting-text-color: var(--adex-success);
+}
+
+.cdk-overlay-pane.mat-mdc-autocomplete-panel {
+  z-index: 1100;
+}
