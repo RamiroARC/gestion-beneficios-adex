@@ -87,12 +87,47 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
               {{ d.empresa.ultimaSyncUtc | date: 'short' }}
             </p>
           </div>
+          <div class="empresa-resumen-card">
+            <h2 class="section-title">Datos CRM</h2>
+            <dl class="crm-data-list">
+              <div><dt>Teléfono</dt><dd>{{ d.empresa.telefono || '—' }}</dd></div>
+              <div><dt>Correo</dt><dd>{{ d.empresa.correo || '—' }}</dd></div>
+              <div><dt>Promotor</dt><dd>{{ d.empresa.promotor || '—' }}</dd></div>
+              <div><dt>Ejecutivo comercial</dt><dd>{{ d.empresa.ejecutivoComercial || '—' }}</dd></div>
+              <div><dt>Gerencia</dt><dd>{{ d.empresa.gerencia || '—' }}</dd></div>
+              <div><dt>Comité</dt><dd>{{ d.empresa.comite || '—' }}</dd></div>
+              <div><dt>Estado CRM</dt><dd>{{ d.empresa.estadoCrm || '—' }}</dd></div>
+              <div><dt>Alta CRM</dt><dd>{{ d.empresa.crmCreatedOn ? (d.empresa.crmCreatedOn | date: 'short') : '—' }}</dd></div>
+            </dl>
+          </div>
           <app-dashboard-distribucion [distribucion]="distribucion(d.puntos)" [calculo]="calculo(d.puntos)" />
         </div>
       } @else {
         <app-empty-state message="Empresa no encontrada." icon="business" />
       }
     </section>
+  `,
+  styles: `
+    .crm-data-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px 24px;
+      margin: 0;
+    }
+    .crm-data-list div {
+      display: grid;
+      gap: 4px;
+    }
+    .crm-data-list dt {
+      font-size: 0.78rem;
+      color: var(--adex-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .crm-data-list dd {
+      margin: 0;
+      font: var(--mat-sys-body-medium);
+    }
   `
 })
 export class EmpresaDetalleComponent implements OnInit {

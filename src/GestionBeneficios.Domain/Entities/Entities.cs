@@ -9,6 +9,16 @@ public class EmpresaAsociada
     public string? Categoria { get; set; }
     public bool Activo { get; set; } = true;
     public DateTime UltimaSyncUtc { get; set; } = DateTime.UtcNow;
+    public string? Correo { get; set; }
+    public string? Telefono { get; set; }
+    public string? PaginaWeb { get; set; }
+    public string? EjecutivoComercial { get; set; }
+    public string? Promotor { get; set; }
+    public string? Gerencia { get; set; }
+    public string? Comite { get; set; }
+    public string? EstadoCrm { get; set; }
+    public string? FechaAltaCrm { get; set; }
+    public DateTime? CrmCreatedOn { get; set; }
 
     public ICollection<Contratacion> Contrataciones { get; set; } = new List<Contratacion>();
     public ICollection<PuntoMovimiento> Movimientos { get; set; } = new List<PuntoMovimiento>();

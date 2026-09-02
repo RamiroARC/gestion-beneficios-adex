@@ -1,19 +1,26 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PageEvent } from '@angular/material/paginator';
+import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatPaginatorModule } from '@angular/material/paginator';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { Subject, debounceTime } from 'rxjs';
 import { ApiService } from '../../core/api.service';
+import { AuthService } from '../../core/auth.service';
 import { Empresa, PuntoMovimiento, PuntosResumen, DashboardCalculo, DashboardDistribucion } from '../../core/models';
 import { apiErrorMessage } from '../../core/http-error';
 import { NotifyService } from '../../core/notify.service';
+import { matchesText } from '../../core/text-match';
+import { EmpresaFormDialogComponent } from '../empresas/empresa-form-dialog.component';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { DashboardDistribucionComponent } from '../../shared/dashboard-distribucion.component';
 import { KpiCardComponent } from '../../shared/kpi-card.component';
@@ -26,7 +33,7 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
   standalone: true,
   imports: [
     DatePipe,
-    FormsModule,
+    ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
@@ -35,6 +42,8 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
     MatTableModule,
     MatPaginatorModule,
     MatTooltipModule,
+    MatDialogModule,
+    MatAutocompleteModule,
     DashboardDistribucionComponent,
     PageHeaderComponent,
     KpiCardComponent,
@@ -46,7 +55,7 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
     <section class="page">
       <app-page-header
         title="Ledger de puntos"
-        subtitle="Empresas asociadas. Usa el ícono de ojo para consultar saldo y movimientos."
+        subtitle="Empresas asociadas. Consulta el ledger o edita los datos de la empresa."
       />
 
       @if (!selectedEmpresa()) {
@@ -54,9 +63,36 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
           <mat-card-content class="toolbar-filters">
             <mat-form-field appearance="outline" subscriptSizing="dynamic" class="form-grid__wide">
               <mat-label>Buscar RUC / razón social</mat-label>
-              <input matInput [(ngModel)]="q" (keyup.enter)="search()" />
+              <input
+                matInput
+                [formControl]="empresaSearchQuery"
+                [matAutocomplete]="autoEmpresa"
+                (input)="onSearchType($any($event.target).value)"
+                (keyup.enter)="search()"
+                autocomplete="off"
+              />
+              <mat-autocomplete
+                #autoEmpresa="matAutocomplete"
+                [displayWith]="displayEmpresa"
+                (optionSelected)="onSearchSelected($event)"
+              >
+                @for (e of filteredEmpresas(); track e.empresaId) {
+                  <mat-option [value]="e">
+                    <span class="option-dual">
+                      {{ e.razonSocial }}
+                      <small>RUC {{ e.ruc }}</small>
+                    </span>
+                  </mat-option>
+                }
+                @if (filteredEmpresas().length === 0 && empresaText().trim()) {
+                  <mat-option disabled>{{ searchHint() }}</mat-option>
+                }
+              </mat-autocomplete>
             </mat-form-field>
             <button mat-stroked-button type="button" (click)="search()">Buscar</button>
+            @if (q) {
+              <button mat-button type="button" (click)="clearSearch()">Limpiar</button>
+            }
           </mat-card-content>
         </mat-card>
 
@@ -89,19 +125,35 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
                 <ng-container matColumnDef="ver">
                   <th mat-header-cell *matHeaderCellDef></th>
                   <td mat-cell *matCellDef="let e" class="col-actions">
+                    @if (canWrite()) {
+                      <button
+                        mat-icon-button
+                        type="button"
+                        matTooltip="Editar empresa"
+                        aria-label="Editar empresa"
+                        (click)="editar(e); $event.stopPropagation()"
+                      >
+                        <mat-icon>edit</mat-icon>
+                      </button>
+                    }
                     <button
                       mat-icon-button
                       type="button"
                       matTooltip="Consultar ledger"
                       aria-label="Consultar ledger"
-                      (click)="consultar(e)"
+                      (click)="consultar(e); $event.stopPropagation()"
                     >
                       <mat-icon>visibility</mat-icon>
                     </button>
                   </td>
                 </ng-container>
                 <tr mat-header-row *matHeaderRowDef="empresaCols"></tr>
-                <tr mat-row *matRowDef="let row; columns: empresaCols"></tr>
+                <tr
+                  mat-row
+                  *matRowDef="let row; columns: empresaCols"
+                  [class.row-selectable]="canWrite()"
+                  (click)="canWrite() ? editar(row) : consultar(row)"
+                ></tr>
               </table>
             </div>
             <mat-paginator
@@ -238,16 +290,40 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
       font: var(--mat-sys-body-small);
     }
     .col-actions {
-      width: 56px;
+      width: 96px;
       text-align: right;
+      white-space: nowrap;
     }
   `
 })
 export class PuntosComponent implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly auth = inject(AuthService);
   private readonly notify = inject(NotifyService);
+  private readonly dialog = inject(MatDialog);
+  private readonly destroyRef = inject(DestroyRef);
+
+  readonly canWrite = computed(() => this.auth.hasAnyRole(['Administrador', 'Operador']));
 
   q = '';
+  empresaSearchQuery = new FormControl<string | Empresa>('', { nonNullable: true });
+  empresaText = signal('');
+  lookupsReady = signal(false);
+  private readonly empresasCatalog = signal<Empresa[]>([]);
+  private readonly empresaApi$ = new Subject<string>();
+
+  filteredEmpresas = computed(() => {
+    const term = this.empresaText().trim();
+    if (!term) return [];
+    return this.empresasCatalog()
+      .filter((e) => matchesText(e.razonSocial, term) || matchesText(e.ruc, term))
+      .slice(0, 25);
+  });
+
+  searchHint = computed(() => {
+    if (!this.lookupsReady()) return 'Cargando empresas...';
+    return `Sin coincidencias para “${this.empresaText()}”.`;
+  });
 
   loadingEmpresas = signal(true);
   empresas = signal<Empresa[]>([]);
@@ -291,9 +367,51 @@ export class PuntosComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadEmpresas();
+    this.api.empresas('', 1, 200).subscribe({
+      next: (r) => {
+        this.mergeEmpresas(r.items ?? []);
+        this.lookupsReady.set(true);
+      },
+      error: () => undefined
+    });
+
+    this.empresaApi$.pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef)).subscribe((term) => {
+      if (!term) return;
+      this.api.empresas(term, 1, 50).subscribe({
+        next: (r) => this.mergeEmpresas(r.items ?? []),
+        error: () => undefined
+      });
+    });
+  }
+
+  displayEmpresa = (value: string | Empresa | null): string =>
+    typeof value === 'string' ? value : value?.razonSocial ?? '';
+
+  onSearchType(text: string): void {
+    this.empresaText.set(text);
+    const current = this.empresaSearchQuery.value;
+    if (typeof current === 'object' && current && this.displayEmpresa(current) === text) return;
+    this.empresaApi$.next(text.trim());
+  }
+
+  onSearchSelected(ev: MatAutocompleteSelectedEvent): void {
+    const empresa = ev.option.value as Empresa;
+    this.empresaText.set(empresa.razonSocial);
+    this.q = empresa.ruc;
+    this.empresasPage.set(1);
+    this.loadEmpresas();
   }
 
   search(): void {
+    this.q = this.empresaText().trim();
+    this.empresasPage.set(1);
+    this.loadEmpresas();
+  }
+
+  clearSearch(): void {
+    this.q = '';
+    this.empresaText.set('');
+    this.empresaSearchQuery.reset('');
     this.empresasPage.set(1);
     this.loadEmpresas();
   }
@@ -323,6 +441,19 @@ export class PuntosComponent implements OnInit {
     this.selectedEmpresa.set(empresa);
     this.movimientosPage.set(1);
     this.loadDetalle();
+  }
+
+  editar(empresa: Empresa): void {
+    this.dialog
+      .open(EmpresaFormDialogComponent, {
+        width: '520px',
+        autoFocus: 'first-tabbable',
+        data: { empresa }
+      })
+      .afterClosed()
+      .subscribe((saved) => {
+        if (saved) this.loadEmpresas();
+      });
   }
 
   volver(): void {
@@ -365,6 +496,12 @@ export class PuntosComponent implements OnInit {
 
   pct(part: number, total: number): number {
     return total > 0 ? Math.round((part / total) * 100) : 0;
+  }
+
+  private mergeEmpresas(items: Empresa[]): void {
+    const map = new Map(this.empresasCatalog().map((e) => [e.empresaId, e]));
+    for (const item of items) map.set(item.empresaId, item);
+    this.empresasCatalog.set([...map.values()]);
   }
 
   private buildDistribucion(r: PuntosResumen): DashboardDistribucion {

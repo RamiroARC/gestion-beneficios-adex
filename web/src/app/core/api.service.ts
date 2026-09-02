@@ -47,12 +47,16 @@ export class ApiService {
     return this.http.get<EmpresaDetalle>(`${this.base}/empresas/${id}`);
   }
 
+  updateEmpresa(id: number, body: { razonSocial: string; categoria?: string | null; activo: boolean }) {
+    return this.http.put<Empresa>(`${this.base}/empresas/${id}`, body);
+  }
+
   syncEmpresa(ruc: string) {
     return this.http.post<Empresa>(`${this.base}/empresas/sync/${encodeURIComponent(ruc)}`, {});
   }
 
-  syncEmpresas() {
-    return this.http.post(`${this.base}/empresas/sync`, {});
+  empresaSyncCatalogo() {
+    return this.http.post<EmpresaSyncResult>(`${this.base}/empresas/sync`, {});
   }
 
   empresaSyncEstado() {
@@ -89,6 +93,10 @@ export class ApiService {
 
   createContratacion(body: unknown) {
     return this.http.post<Contratacion>(`${this.base}/contrataciones`, body);
+  }
+
+  updateContratacion(id: number, body: unknown) {
+    return this.http.put<Contratacion>(`${this.base}/contrataciones/${id}`, body);
   }
 
   puntosResumen(empresaId: number) {

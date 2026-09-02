@@ -20,38 +20,48 @@ import { AdexLogoComponent } from '../../core/adex-logo.component';
         <aside class="login__hero">
           <div class="login__hero-bg" aria-hidden="true"></div>
           <div class="login__hero-content">
-            <div class="login__logo-block">
+            <header class="login__hero-top">
               <app-adex-logo class="login__logo" />
               <h1 class="login__hero-title">Sistema de Gestión de Beneficios para Empresas Asociadas</h1>
-            </div>
+            </header>
+
             <p class="login__hero-desc">
               Plataforma integral que facilita la gestión de beneficios, servicios y comunicaciones para
               empresas asociadas, impulsando su crecimiento y competitividad.
             </p>
-            <div class="login__features">
-              <div class="login__feature">
-                <mat-icon>business</mat-icon>
-                <div>
-                  <strong>Gestión integral</strong>
-                  <span>Administra empresas, beneficios y servicios de manera eficiente.</span>
+
+            <footer class="login__hero-foot">
+              <div class="login__features">
+                <div class="login__feature">
+                  <span class="login__feature-icon" aria-hidden="true">
+                    <mat-icon>business</mat-icon>
+                  </span>
+                  <div class="login__feature-copy">
+                    <strong>Gestión integral</strong>
+                    <span>Administra empresas, beneficios y servicios de manera eficiente.</span>
+                  </div>
+                </div>
+                <div class="login__feature">
+                  <span class="login__feature-icon" aria-hidden="true">
+                    <mat-icon>bar_chart</mat-icon>
+                  </span>
+                  <div class="login__feature-copy">
+                    <strong>Información estratégica</strong>
+                    <span>Reportes y métricas en tiempo real para una mejor toma de decisiones.</span>
+                  </div>
+                </div>
+                <div class="login__feature">
+                  <span class="login__feature-icon" aria-hidden="true">
+                    <mat-icon>verified_user</mat-icon>
+                  </span>
+                  <div class="login__feature-copy">
+                    <strong>Seguridad garantizada</strong>
+                    <span>Protegemos tu información con los más altos estándares de seguridad.</span>
+                  </div>
                 </div>
               </div>
-              <div class="login__feature">
-                <mat-icon>bar_chart</mat-icon>
-                <div>
-                  <strong>Información estratégica</strong>
-                  <span>Reportes y métricas en tiempo real para una mejor toma de decisiones.</span>
-                </div>
-              </div>
-              <div class="login__feature">
-                <mat-icon>verified_user</mat-icon>
-                <div>
-                  <strong>Seguridad garantizada</strong>
-                  <span>Protegemos tu información con los más altos estándares de seguridad.</span>
-                </div>
-              </div>
-            </div>
-            <p class="login__hero-footer">© 2025 ADEX - Asociación de Exportadores | Todos los derechos reservados</p>
+              <p class="login__hero-footer">© 2025 ADEX - Asociación de Exportadores | Todos los derechos reservados</p>
+            </footer>
           </div>
         </aside>
 
@@ -149,6 +159,8 @@ import { AdexLogoComponent } from '../../core/adex-logo.component';
 
     .login__hero {
       position: relative;
+      display: flex;
+      flex-direction: column;
       background: linear-gradient(165deg, #001a33 0%, var(--adex-blue) 45%, #004a8f 100%);
       color: var(--adex-white);
       overflow: hidden;
@@ -181,64 +193,103 @@ import { AdexLogoComponent } from '../../core/adex-logo.component';
     .login__hero-content {
       position: relative;
       z-index: 1;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      height: 100%;
+      min-height: 100%;
+      padding: clamp(1.5rem, 4vw, 2.25rem) clamp(1.25rem, 3vw, 1.75rem);
+    }
+
+    .login__hero-top {
       display: flex;
       flex-direction: column;
-      height: 100%;
-      padding: var(--gb-space-6) var(--gb-space-5);
+      gap: var(--gb-space-3);
+      align-self: start;
     }
 
     .login__logo {
-      width: min(240px, 100%);
+      width: min(200px, 72%);
     }
 
     .login__hero-title {
-      margin: var(--gb-space-4) 0 0;
-      font: 700 1.25rem/1.35 Roboto, sans-serif;
+      margin: 0;
+      max-width: 22rem;
+      font: 700 clamp(1.05rem, 1.6vw, 1.2rem)/1.35 Roboto, sans-serif;
       letter-spacing: -0.01em;
       color: var(--adex-white);
     }
 
     .login__hero-desc {
       margin: 0;
-      max-width: 36ch;
-      font: 400 0.875rem/1.55 Roboto, sans-serif;
-      color: rgba(255, 255, 255, 0.82);
+      align-self: center;
+      max-width: 38ch;
+      font: 400 0.8125rem/1.55 Roboto, sans-serif;
+      color: rgba(255, 255, 255, 0.84);
+    }
+
+    .login__hero-foot {
+      display: flex;
+      flex-direction: column;
+      gap: var(--gb-space-4);
+      align-self: end;
+      padding-top: var(--gb-space-4);
+      border-top: 1px solid rgba(255, 255, 255, 0.14);
     }
 
     .login__features {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: var(--gb-space-4);
-      margin-top: auto;
-      padding-top: var(--gb-space-6);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--gb-space-3);
     }
 
     .login__feature {
       display: flex;
-      flex-direction: column;
-      gap: var(--gb-space-2);
+      align-items: flex-start;
+      gap: 10px;
+      min-width: 0;
+      padding: 10px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
 
-    .login__feature mat-icon {
-      font-size: 22px;
-      width: 22px;
-      height: 22px;
-      color: rgba(255, 255, 255, 0.9);
+    .login__feature-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .login__feature-icon mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      color: rgba(255, 255, 255, 0.95);
+    }
+
+    .login__feature-copy {
+      min-width: 0;
     }
 
     .login__feature strong {
       display: block;
-      font: 600 0.75rem/1.3 Roboto, sans-serif;
-      margin-bottom: 2px;
+      font: 600 0.72rem/1.25 Roboto, sans-serif;
+      margin-bottom: 3px;
+      color: rgba(255, 255, 255, 0.96);
     }
 
     .login__feature span {
-      font: 400 0.6875rem/1.45 Roboto, sans-serif;
+      display: block;
+      font: 400 0.66rem/1.4 Roboto, sans-serif;
       color: rgba(255, 255, 255, 0.72);
     }
 
     .login__hero-footer {
-      margin: var(--gb-space-5) 0 0;
+      margin: 0;
       font: 400 0.6875rem/1.4 Roboto, sans-serif;
       color: rgba(255, 255, 255, 0.55);
     }
@@ -494,12 +545,22 @@ import { AdexLogoComponent } from '../../core/adex-logo.component';
       }
 
       .login__hero-content {
+        grid-template-rows: auto auto auto;
         padding: var(--gb-space-5) var(--gb-space-4);
+      }
+
+      .login__hero-desc {
+        align-self: start;
+        padding: var(--gb-space-4) 0;
+      }
+
+      .login__hero-foot {
+        padding-top: var(--gb-space-3);
       }
 
       .login__features {
         grid-template-columns: 1fr;
-        gap: var(--gb-space-3);
+        gap: var(--gb-space-2);
       }
 
       .login__hero-footer {

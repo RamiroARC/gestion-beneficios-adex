@@ -63,6 +63,44 @@
       }
     },
     {
+      "name": "Empresas Sync Preview",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"inicio\": \"2026-08-21T00:00:00.000Z\",\n  \"fin\": \"2026-09-02T23:59:59.000Z\"\n}"
+        },
+        "url": "{{baseUrl}}/api/v1/empresas/sync/preview"
+      }
+    },
+    {
+      "name": "Empresas Sync Procesar",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"inicio\": \"2026-08-21T00:00:00.000Z\",\n  \"fin\": \"2026-09-02T23:59:59.000Z\"\n}"
+        },
+        "url": "{{baseUrl}}/api/v1/empresas/sync/procesar"
+      }
+    },
+    {
+      "name": "Empresas Sync RUC",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/api/v1/empresas/sync/20100070970"
+      }
+    },
+    {
       "name": "Alumnos Create",
       "request": {
         "method": "POST",

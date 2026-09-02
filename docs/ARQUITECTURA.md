@@ -32,7 +32,7 @@ flowchart LR
     Infra[GestionBeneficios.Infrastructure]
   end
   DB[(SQLite / SQL Server)]
-  CRM[MockCrmGremiosClient]
+  CRM[ICrmEmpresasClient]
   SPA --> ApiSvc --> Auth
   ApiSvc -->|HTTP /api/v1| Api
   Api --> App
@@ -99,7 +99,7 @@ Responsabilidad: orquestar casos de uso, mapear entidades ↔ DTOs, definir cont
 
 | Carpeta / archivo | Contenido |
 |-------------------|-----------|
-| `Abstractions/Abstractions.cs` | Interfaces: `I*Dao`, `IUnitOfWork`, `ICrmGremiosClient`, `IEmailSender`, `ICurrentUser` |
+| `Abstractions/Abstractions.cs` | Interfaces: `I*Dao`, `IUnitOfWork`, `ICrmEmpresasClient`, `IEmailSender`, `ICurrentUser` |
 | `DTOs/Dtos.cs` | Records de request/response, `PagedResult<T>` |
 | `Services/CoreServices.cs` | `EmpresaAppService`, `AlumnoAppService`, `ContratacionAppService` |
 | `Services/CanjeBeneficioServices.cs` | `BeneficioAppService`, `CanjeAppService`, `PuntosAppService`, `DashboardAppService` |
@@ -126,7 +126,8 @@ Responsabilidad: persistencia EF Core, implementación de DAOs, integraciones ex
 | `DependencyInjection.cs` | `AddInfrastructure()`, `SeedAsync()`, `LoggingEmailSender`, `HttpCurrentUser`, `VencimientoBackgroundService` |
 | `Persistence/BeneficiosDbContext.cs` | DbContext EF, mapeo fluent de tablas |
 | `Persistence/Daos.cs` | Implementaciones `*Dao` + `EfUnitOfWork` |
-| `Crm/MockCrmGremiosClient.cs` | Stub del CRM Gremios (empresas asociadas) |
+| `Crm/MockCrmEmpresasClient.cs` | Stub del CRM de Empresas (desarrollo) |
+| `Crm/CrmEmpresasHttpClient.cs` | Cliente HTTP API ADEX (producción) |
 
 ---
 
@@ -193,7 +194,7 @@ Ubicación: `Infrastructure/DependencyInjection.cs`
 | `CargaMasivaDao` | `ICargaMasivaDao` | Scoped |
 | `AuditoriaDao` | `IAuditoriaDao` | Scoped |
 | `ConfiguracionDao` | `IConfiguracionDao` | Scoped |
-| `MockCrmGremiosClient` | `ICrmGremiosClient` | **Singleton** |
+| `MockCrmEmpresasClient` / `CrmEmpresasHttpClient` | `ICrmEmpresasClient` | **Singleton** / **HttpClient** |
 | `LoggingEmailSender` | `IEmailSender` | **Singleton** |
 | `HttpCurrentUser` | `ICurrentUser` | Scoped |
 | `VencimientoBackgroundService` | — | **HostedService** |
@@ -264,6 +265,8 @@ var items = await query
 | Job | `VencimientoBackgroundService` cada `Jobs:IntervalMinutes` (default 15 min) |
 
 **Tablas principales:** EmpresaAsociada, Alumno, Contratacion, PuntoLote, PuntoMovimiento, Beneficio, Canje, PlantillaCorreo, CorreoEnviado, CargaMasiva, CargaMasivaDetalle, Auditoria, ConfiguracionSistema.
+
+Ver **[MODELO-DATOS.md](MODELO-DATOS.md)** para el diagrama ERD, diccionario de campos, enumeraciones y flujo del ledger de puntos.
 
 ---
 
@@ -415,7 +418,7 @@ Guards: `authGuard` (shell) + `roleGuard` (por ruta, lee `route.data.roles`).
 | Integración | Implementación actual | Futuro |
 |-------------|----------------------|--------|
 | Auth | `POST /api/v1/auth/dev-token` — JWT HS256 24h | Login Centros Académico |
-| CRM | `MockCrmGremiosClient` (Singleton) | Cliente HTTP real Gremios |
+| CRM | `MockCrmEmpresasClient` (dev) / `CrmEmpresasHttpClient` (prod) | API ADEX `listarAsociados` + JWT |
 | Email | `LoggingEmailSender` (log only) | SMTP / servicio institucional |
 
 **Roles JWT:** `Administrador`, `Operador`, `Consulta`, `GestionBeneficios`.

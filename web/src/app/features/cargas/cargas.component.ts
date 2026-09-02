@@ -42,7 +42,7 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
               <mat-icon>upload_file</mat-icon>
               Seleccionar Excel
             </button>
-            <span class="page__intro">Use la plantilla. Fechas: yyyy-MM-dd. codigoalumno = Nro. DNI.</span>
+            <span class="page__intro">Use la plantilla. Fechas: yyyy-MM-dd. El RUC debe existir en Empresas; el DNI se crea en Alumnos si no existe.</span>
           </div>
         </mat-card-content>
       </mat-card>
@@ -54,8 +54,11 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
               Carga #{{ c.cargaId }} ·
               <app-status-chip [status]="c.estado" />
               · válidas {{ c.filasValidas }} / inválidas {{ c.filasInvalidas }}
+              @if (c.filasProcesadas > 0) {
+                · procesadas {{ c.filasProcesadas }} (registradas en Contrataciones)
+              }
             </p>
-            <button mat-flat-button type="button" (click)="confirmar()" [disabled]="c.filasValidas === 0">
+            <button mat-flat-button type="button" (click)="confirmar()" [disabled]="c.filasValidas === 0 || c.estado !== 'Previsualizacion'">
               Confirmar válidos
             </button>
           </mat-card-content>
@@ -67,6 +70,12 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
             <div class="table-wrap">
               <table mat-table [dataSource]="detalles()">
                 <ng-container matColumnDef="fila"><th mat-header-cell *matHeaderCellDef>Fila</th><td mat-cell *matCellDef="let d">{{ d.numeroFila }}</td></ng-container>
+                <ng-container matColumnDef="ruc"><th mat-header-cell *matHeaderCellDef>RUC</th><td mat-cell *matCellDef="let d">{{ d.ruc }}</td></ng-container>
+                <ng-container matColumnDef="dni"><th mat-header-cell *matHeaderCellDef>DNI</th><td mat-cell *matCellDef="let d">{{ d.codigoAlumno }}</td></ng-container>
+                <ng-container matColumnDef="alumno"><th mat-header-cell *matHeaderCellDef>Alumno</th><td mat-cell *matCellDef="let d">{{ d.nombres }} {{ d.apellidos }}</td></ng-container>
+                <ng-container matColumnDef="fechas"><th mat-header-cell *matHeaderCellDef>Periodo</th><td mat-cell *matCellDef="let d">{{ d.fechaInicio }} → {{ d.fechaFin }}</td></ng-container>
+                <ng-container matColumnDef="sueldo"><th mat-header-cell *matHeaderCellDef>Sueldo</th><td mat-cell *matCellDef="let d">{{ d.sueldo }}</td></ng-container>
+                <ng-container matColumnDef="anio"><th mat-header-cell *matHeaderCellDef>Año</th><td mat-cell *matCellDef="let d">{{ d.anio }}</td></ng-container>
                 <ng-container matColumnDef="ok">
                   <th mat-header-cell *matHeaderCellDef>Válido</th>
                   <td mat-cell *matCellDef="let d"><app-status-chip [status]="d.esValido ? 'Válido' : 'Inválido'" /></td>
@@ -89,7 +98,7 @@ export class CargasComponent {
   carga = signal<CargaMasiva | null>(null);
   detalles = signal<CargaDetalle[]>([]);
   downloading = signal(false);
-  cols = ['fila', 'ok', 'errores'];
+  cols = ['fila', 'ruc', 'dni', 'alumno', 'fechas', 'sueldo', 'anio', 'ok', 'errores'];
 
   downloadPlantilla(): void {
     if (this.downloading()) return;
@@ -120,10 +129,11 @@ export class CargasComponent {
       next: (c) => {
         this.carga.set(c);
         this.notify.success('Archivo validado. Revise la previsualización.');
-        this.api.cargaDetalles(c.cargaId).subscribe((d) => this.detalles.set(d));
+        this.loadDetalles(c.cargaId);
       },
       error: (e) => this.notify.error(apiErrorMessage(e, 'Error al subir'))
     });
+    input.value = '';
   }
 
   confirmar(): void {
@@ -132,9 +142,17 @@ export class CargasComponent {
     this.api.confirmarCarga(current.cargaId).subscribe({
       next: (c) => {
         this.carga.set(c);
-        this.notify.success(`Procesadas ${c.filasProcesadas} filas correctamente.`);
+        this.loadDetalles(c.cargaId);
+        this.notify.success(`${c.filasProcesadas} contratación(es) registrada(s) correctamente.`);
       },
       error: (e) => this.notify.error(apiErrorMessage(e, 'Error al confirmar'))
+    });
+  }
+
+  private loadDetalles(cargaId: number): void {
+    this.api.cargaDetalles(cargaId).subscribe({
+      next: (d) => this.detalles.set(d),
+      error: (e) => this.notify.error(apiErrorMessage(e, 'No se pudo cargar la previsualización.'))
     });
   }
 }

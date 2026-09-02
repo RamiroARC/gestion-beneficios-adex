@@ -98,14 +98,32 @@ public interface IConfiguracionDao
     Task SetValorAsync(string clave, string valor, CancellationToken ct = default);
 }
 
-public interface ICrmGremiosClient
+public interface ICrmEmpresasClient
 {
     Task<IReadOnlyList<CrmEmpresaDto>> SearchAsync(string? query, CancellationToken ct = default);
     Task<IReadOnlyList<CrmEmpresaDto>> SearchByPeriodAsync(DateTime inicioUtc, DateTime finUtc, CancellationToken ct = default);
     Task<CrmEmpresaDto?> GetByRucAsync(string ruc, CancellationToken ct = default);
 }
 
-public record CrmEmpresaDto(string CrmEmpresaId, string Ruc, string RazonSocial, string? Categoria, bool Activo, DateTime ActualizadoUtc);
+public record CrmEmpresaDto(
+    string CrmEmpresaId,
+    string Ruc,
+    string RazonSocial,
+    string? Categoria,
+    bool Activo,
+    DateTime CrmCreatedOn,
+    string? EstadoCrm = null,
+    string? Telefono = null,
+    string? Correo = null,
+    string? PaginaWeb = null,
+    string? EjecutivoComercial = null,
+    string? Promotor = null,
+    string? Gerencia = null,
+    string? Comite = null,
+    string? FechaAltaCrm = null)
+{
+    public DateTime ActualizadoUtc => CrmCreatedOn;
+}
 
 public interface IEmailSender
 {

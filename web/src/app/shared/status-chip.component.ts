@@ -41,9 +41,9 @@ export class StatusChipComponent {
 
   toneClass = computed(() => {
     const s = (this.status() || '').toLowerCase();
-    if (['activo', 'vigente', 'enviado', 'procesado', 'valido', 'válido'].some((x) => s.includes(x))) return 'tone-success';
+    if (['activo', 'vigente', 'enviado', 'procesado', 'valido', 'válido', 'canjeable'].some((x) => s.includes(x))) return 'tone-success';
     if (['pendiente', 'previsualizacion', 'próx', 'prox'].some((x) => s.includes(x))) return 'tone-warning';
-    if (['inactivo', 'vencid', 'error', 'anulado', 'invalido'].some((x) => s.includes(x))) return 'tone-error';
+    if (['inactivo', 'vencid', 'error', 'anulado', 'invalido', 'insuficiente'].some((x) => s.includes(x))) return 'tone-error';
     if (['consulta', 'info'].some((x) => s.includes(x))) return 'tone-info';
     return 'tone-neutral';
   });

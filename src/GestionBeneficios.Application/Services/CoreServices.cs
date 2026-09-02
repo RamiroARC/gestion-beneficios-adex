@@ -10,7 +10,7 @@ namespace GestionBeneficios.Application.Services;
 public class EmpresaAppService(
     IEmpresaDao empresas,
     IPuntosDao puntos,
-    ICrmGremiosClient crm,
+    ICrmEmpresasClient crm,
     IUnitOfWork uow,
     IAuditoriaDao auditoria,
     IConfiguracionDao configuracion,
@@ -52,7 +52,16 @@ public class EmpresaAppService(
             var exists = await empresas.GetByCrmIdAsync(item.CrmEmpresaId, ct) is not null
                          || await empresas.GetByRucAsync(item.Ruc, ct) is not null;
             preview.Add(new EmpresaSyncPreviewItemDto(
-                item.CrmEmpresaId, item.Ruc, item.RazonSocial, item.Categoria, item.Activo, item.ActualizadoUtc, exists));
+                item.CrmEmpresaId,
+                item.Ruc,
+                item.RazonSocial,
+                item.Categoria,
+                item.Activo,
+                item.ActualizadoUtc,
+                exists,
+                item.Correo,
+                item.Promotor,
+                item.CrmCreatedOn));
         }
         return new(preview, preview.Count, inicio, fin);
     }
@@ -61,27 +70,7 @@ public class EmpresaAppService(
     {
         var (inicio, fin) = NormalizePeriod(req.Inicio, req.Fin);
         var crmItems = await crm.SearchByPeriodAsync(inicio, fin, ct);
-        var nuevas = 0;
-        var actualizadas = 0;
-
-        foreach (var item in crmItems)
-        {
-            var existing = await empresas.GetByCrmIdAsync(item.CrmEmpresaId, ct)
-                ?? await empresas.GetByRucAsync(item.Ruc, ct);
-            var isNew = existing is null || existing.EmpresaId == 0;
-            existing ??= new EmpresaAsociada();
-
-            existing.CrmEmpresaId = item.CrmEmpresaId;
-            existing.Ruc = item.Ruc;
-            existing.RazonSocial = item.RazonSocial;
-            existing.Categoria = item.Categoria;
-            existing.Activo = item.Activo;
-            existing.UltimaSyncUtc = DateTime.UtcNow;
-            await empresas.UpsertAsync(existing, ct);
-
-            if (isNew) nuevas++;
-            else actualizadas++;
-        }
+        var (nuevas, actualizadas) = await UpsertManyFromCrmAsync(crmItems, ct);
 
         await configuracion.SetValorAsync(SyncInicioKey, inicio.ToString("O"), ct);
         await configuracion.SetValorAsync(SyncFinKey, fin.ToString("O"), ct);
@@ -101,20 +90,9 @@ public class EmpresaAppService(
     public async Task<EmpresaDto> SyncFromCrmByRucAsync(string ruc, CancellationToken ct = default)
     {
         var crmEmpresa = await crm.GetByRucAsync(ruc, ct)
-            ?? throw new InvalidOperationException("Empresa inexistente en el CRM de Gremios.");
+            ?? throw new InvalidOperationException("Empresa inexistente en el CRM de Empresas.");
 
-        var existing = await empresas.GetByCrmIdAsync(crmEmpresa.CrmEmpresaId, ct)
-            ?? await empresas.GetByRucAsync(crmEmpresa.Ruc, ct)
-            ?? new EmpresaAsociada();
-
-        existing.CrmEmpresaId = crmEmpresa.CrmEmpresaId;
-        existing.Ruc = crmEmpresa.Ruc;
-        existing.RazonSocial = crmEmpresa.RazonSocial;
-        existing.Categoria = crmEmpresa.Categoria;
-        existing.Activo = crmEmpresa.Activo;
-        existing.UltimaSyncUtc = DateTime.UtcNow;
-
-        await empresas.UpsertAsync(existing, ct);
+        var existing = await UpsertFromCrmAsync(crmEmpresa, ct);
         await uow.SaveChangesAsync(ct);
         await auditoria.AddAsync(new AuditoriaEvento
         {
@@ -128,23 +106,98 @@ public class EmpresaAppService(
         return Map(existing);
     }
 
-    public async Task SyncCatalogAsync(CancellationToken ct = default)
+    public async Task<EmpresaDto> UpdateAsync(int id, UpdateEmpresaRequest req, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(req.RazonSocial))
+            throw new InvalidOperationException("La razón social es obligatoria.");
+
+        var e = await empresas.GetByIdAsync(id, ct) ?? throw new KeyNotFoundException("Empresa no encontrada.");
+        var before = JsonSerializer.Serialize(Map(e));
+
+        e.RazonSocial = req.RazonSocial.Trim();
+        e.Categoria = string.IsNullOrWhiteSpace(req.Categoria) ? null : req.Categoria.Trim();
+        e.Activo = req.Activo;
+
+        await empresas.UpsertAsync(e, ct);
+        await auditoria.AddAsync(new AuditoriaEvento
+        {
+            Usuario = user.UserName,
+            Accion = "UPDATE",
+            Entidad = nameof(EmpresaAsociada),
+            EntidadId = id.ToString(),
+            ValorAnterior = before,
+            ValorNuevo = JsonSerializer.Serialize(req)
+        }, ct);
+        await uow.SaveChangesAsync(ct);
+        return Map(e);
+    }
+
+    public async Task<EmpresaSyncResultDto> SyncCatalogAsync(CancellationToken ct = default)
     {
         var list = await crm.SearchAsync(null, ct);
-        foreach (var item in list)
+        var (nuevas, actualizadas) = await UpsertManyFromCrmAsync(list, ct);
+        var now = DateTime.UtcNow;
+
+        await auditoria.AddAsync(new AuditoriaEvento
+        {
+            Usuario = user.UserName,
+            Accion = "SYNC_CRM_CATALOGO",
+            Entidad = nameof(EmpresaAsociada),
+            ValorNuevo = JsonSerializer.Serialize(new { procesadas = list.Count, nuevas, actualizadas })
+        }, ct);
+        await uow.SaveChangesAsync(ct);
+
+        return new(list.Count, nuevas, actualizadas, now, now);
+    }
+
+    private async Task<(int Nuevas, int Actualizadas)> UpsertManyFromCrmAsync(
+        IReadOnlyList<CrmEmpresaDto> items,
+        CancellationToken ct)
+    {
+        var nuevas = 0;
+        var actualizadas = 0;
+
+        foreach (var item in items)
         {
             var existing = await empresas.GetByCrmIdAsync(item.CrmEmpresaId, ct)
-                ?? await empresas.GetByRucAsync(item.Ruc, ct)
-                ?? new EmpresaAsociada();
-            existing.CrmEmpresaId = item.CrmEmpresaId;
-            existing.Ruc = item.Ruc;
-            existing.RazonSocial = item.RazonSocial;
-            existing.Categoria = item.Categoria;
-            existing.Activo = item.Activo;
-            existing.UltimaSyncUtc = DateTime.UtcNow;
-            await empresas.UpsertAsync(existing, ct);
+                ?? await empresas.GetByRucAsync(item.Ruc, ct);
+            var isNew = existing is null || existing.EmpresaId == 0;
+            await UpsertFromCrmAsync(item, ct, existing);
+            if (isNew) nuevas++;
+            else actualizadas++;
         }
-        await uow.SaveChangesAsync(ct);
+
+        return (nuevas, actualizadas);
+    }
+
+    private async Task<EmpresaAsociada> UpsertFromCrmAsync(
+        CrmEmpresaDto item,
+        CancellationToken ct,
+        EmpresaAsociada? existing = null)
+    {
+        existing ??= await empresas.GetByCrmIdAsync(item.CrmEmpresaId, ct)
+            ?? await empresas.GetByRucAsync(item.Ruc, ct)
+            ?? new EmpresaAsociada();
+
+        existing.CrmEmpresaId = item.CrmEmpresaId;
+        existing.Ruc = item.Ruc;
+        existing.RazonSocial = item.RazonSocial;
+        existing.Categoria = item.Categoria;
+        existing.Activo = item.Activo;
+        existing.Correo = item.Correo;
+        existing.Telefono = item.Telefono;
+        existing.PaginaWeb = item.PaginaWeb;
+        existing.EjecutivoComercial = item.EjecutivoComercial;
+        existing.Promotor = item.Promotor;
+        existing.Gerencia = item.Gerencia;
+        existing.Comite = item.Comite;
+        existing.EstadoCrm = item.EstadoCrm;
+        existing.FechaAltaCrm = item.FechaAltaCrm;
+        existing.CrmCreatedOn = item.CrmCreatedOn;
+        existing.UltimaSyncUtc = DateTime.UtcNow;
+
+        await empresas.UpsertAsync(existing, ct);
+        return existing;
     }
 
     private async Task<DateTime?> ReadDateAsync(string key, CancellationToken ct)
@@ -165,7 +218,24 @@ public class EmpresaAppService(
     }
 
     private static EmpresaDto Map(EmpresaAsociada e) =>
-        new(e.EmpresaId, e.CrmEmpresaId, e.Ruc, e.RazonSocial, e.Categoria, e.Activo, e.UltimaSyncUtc);
+        new(
+            e.EmpresaId,
+            e.CrmEmpresaId,
+            e.Ruc,
+            e.RazonSocial,
+            e.Categoria,
+            e.Activo,
+            e.UltimaSyncUtc,
+            e.Correo,
+            e.Telefono,
+            e.PaginaWeb,
+            e.EjecutivoComercial,
+            e.Promotor,
+            e.Gerencia,
+            e.Comite,
+            e.EstadoCrm,
+            e.FechaAltaCrm,
+            e.CrmCreatedOn);
 }
 
 public class AlumnoAppService(IAlumnoDao alumnos, IUnitOfWork uow, IAuditoriaDao auditoria, ICurrentUser user)
@@ -349,6 +419,7 @@ public class ContratacionAppService(
         c.FechaInicio = req.FechaInicio;
         c.FechaFin = req.FechaFin;
         c.Sueldo = req.Sueldo;
+        c.MesContratacion = PuntosCalculator.CalcularMesesPreliminar(req.FechaInicio, req.FechaFin);
         c.Estado = Enum.Parse<EstadoContratacion>(req.Estado, true);
         c.ActualizadoUtc = DateTime.UtcNow;
         c.PuntosGenerados = PuntosCalculator.CalcularPuntos(c.Sueldo, c.FechaInicio, c.FechaFin);

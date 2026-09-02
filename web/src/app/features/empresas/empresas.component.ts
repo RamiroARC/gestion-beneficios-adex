@@ -5,6 +5,7 @@ import { PageEvent } from '@angular/material/paginator';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -12,6 +13,7 @@ import { MatPaginatorModule } from '@angular/material/paginator';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ApiService } from '../../core/api.service';
+import { AuthService } from '../../core/auth.service';
 import { Empresa, EmpresaSyncEstado, EmpresaSyncPreviewItem } from '../../core/models';
 import { apiErrorMessage } from '../../core/http-error';
 import { NotifyService } from '../../core/notify.service';
@@ -20,6 +22,7 @@ import { LoadingStateComponent } from '../../shared/loading-state.component';
 import { PageHeaderComponent } from '../../shared/page-header.component';
 import { StatusChipComponent } from '../../shared/status-chip.component';
 import { RoleIfDirective } from '../../shared/role-if.directive';
+import { EmpresaFormDialogComponent } from './empresa-form-dialog.component';
 
 @Component({
   selector: 'app-empresas',
@@ -36,6 +39,7 @@ import { RoleIfDirective } from '../../shared/role-if.directive';
     MatPaginatorModule,
     MatIconModule,
     MatTooltipModule,
+    MatDialogModule,
     PageHeaderComponent,
     StatusChipComponent,
     EmptyStateComponent,
@@ -44,7 +48,7 @@ import { RoleIfDirective } from '../../shared/role-if.directive';
   ],
   template: `
     <section class="page">
-      <app-page-header title="Empresas asociadas" subtitle="Fuente: CRM de Gremios (sincronización local). Sin alta manual." />
+      <app-page-header title="Empresas asociadas" subtitle="Fuente: CRM de Empresas (sincronización local). Sin alta manual." />
 
       <ng-container *appRoleIf="['Administrador', 'Operador']">
         <mat-card appearance="outlined" class="sync-card">
@@ -69,7 +73,19 @@ import { RoleIfDirective } from '../../shared/role-if.directive';
               >
                 Procesar
               </button>
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="syncCatalogo()"
+                [disabled]="catalogLoading()"
+              >
+                Sincronizar catálogo completo
+              </button>
             </div>
+
+            <p class="sync-note">
+              El periodo filtra por fecha de alta en CRM (createdOn). Para actualizar empresas existentes, use Sincronizar catálogo completo.
+            </p>
 
             <div class="sync-meta">
               <div class="sync-meta__text">
@@ -136,9 +152,17 @@ import { RoleIfDirective } from '../../shared/role-if.directive';
                     <th mat-header-cell *matHeaderCellDef>Categoría</th>
                     <td mat-cell *matCellDef="let e">{{ e.categoria }}</td>
                   </ng-container>
+                  <ng-container matColumnDef="correo">
+                    <th mat-header-cell *matHeaderCellDef>Correo</th>
+                    <td mat-cell *matCellDef="let e">{{ e.correo || '—' }}</td>
+                  </ng-container>
+                  <ng-container matColumnDef="promotor">
+                    <th mat-header-cell *matHeaderCellDef>Promotor</th>
+                    <td mat-cell *matCellDef="let e">{{ e.promotor || '—' }}</td>
+                  </ng-container>
                   <ng-container matColumnDef="actualizado">
-                    <th mat-header-cell *matHeaderCellDef>Actualizado CRM</th>
-                    <td mat-cell *matCellDef="let e">{{ e.actualizadoUtc | date: 'short' }}</td>
+                    <th mat-header-cell *matHeaderCellDef>Alta CRM</th>
+                    <td mat-cell *matCellDef="let e">{{ (e.crmCreatedOn || e.actualizadoUtc) | date: 'short' }}</td>
                   </ng-container>
                   <ng-container matColumnDef="estadoLocal">
                     <th mat-header-cell *matHeaderCellDef>Local</th>
@@ -202,14 +226,30 @@ import { RoleIfDirective } from '../../shared/role-if.directive';
               </ng-container>
               <ng-container matColumnDef="ver">
                 <th mat-header-cell *matHeaderCellDef></th>
-                <td mat-cell *matCellDef="let e">
-                  <a mat-icon-button [routerLink]="['/empresas', e.empresaId]" matTooltip="Ver detalle" aria-label="Ver detalle">
+                <td mat-cell *matCellDef="let e" class="col-actions">
+                  <ng-container *appRoleIf="['Administrador', 'Operador']">
+                    <button
+                      mat-icon-button
+                      type="button"
+                      matTooltip="Editar empresa"
+                      aria-label="Editar empresa"
+                      (click)="editar(e); $event.stopPropagation()"
+                    >
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                  </ng-container>
+                  <a mat-icon-button [routerLink]="['/empresas', e.empresaId]" matTooltip="Ver detalle" aria-label="Ver detalle" (click)="$event.stopPropagation()">
                     <mat-icon>visibility</mat-icon>
                   </a>
                 </td>
               </ng-container>
               <tr mat-header-row *matHeaderRowDef="cols"></tr>
-              <tr mat-row *matRowDef="let row; columns: cols"></tr>
+              <tr
+                mat-row
+                *matRowDef="let row; columns: cols"
+                [class.row-selectable]="canWrite()"
+                (click)="canWrite() && editar(row)"
+              ></tr>
             </table>
           </div>
           <mat-paginator
@@ -252,16 +292,30 @@ import { RoleIfDirective } from '../../shared/role-if.directive';
       color: var(--adex-success);
       font-weight: 500;
     }
+    .sync-note {
+      margin: var(--gb-space-3) 0 0;
+      color: var(--adex-text-muted);
+      font: var(--mat-sys-body-small);
+    }
     .sync-card mat-card-title,
     .table-card mat-card-title {
       font: var(--mat-sys-title-medium);
       color: var(--adex-blue);
     }
+    .col-actions {
+      width: 96px;
+      text-align: right;
+      white-space: nowrap;
+    }
   `
 })
 export class EmpresasComponent implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly auth = inject(AuthService);
   private readonly notify = inject(NotifyService);
+  private readonly dialog = inject(MatDialog);
+
+  readonly canWrite = computed(() => this.auth.hasAnyRole(['Administrador', 'Operador']));
 
   q = '';
   rucSync = '';
@@ -280,7 +334,8 @@ export class EmpresasComponent implements OnInit {
   previewSeen = signal(false);
   previewLoading = signal(false);
   processLoading = signal(false);
-  previewCols = ['ruc', 'razonSocial', 'categoria', 'actualizado', 'estadoLocal'];
+  catalogLoading = signal(false);
+  previewCols = ['ruc', 'razonSocial', 'categoria', 'correo', 'promotor', 'actualizado', 'estadoLocal'];
 
   canProcesar = computed(() => this.previewSeen() && !!this.syncInicio && !!this.syncFin);
 
@@ -308,6 +363,20 @@ export class EmpresasComponent implements OnInit {
         this.notify.error(apiErrorMessage(e, 'No se pudieron cargar empresas.'));
       }
     });
+  }
+
+  editar(empresa: Empresa): void {
+    if (!this.canWrite()) return;
+    this.dialog
+      .open(EmpresaFormDialogComponent, {
+        width: '520px',
+        autoFocus: 'first-tabbable',
+        data: { empresa }
+      })
+      .afterClosed()
+      .subscribe((saved) => {
+        if (saved) this.load();
+      });
   }
 
   onPage(ev: PageEvent): void {
@@ -386,6 +455,25 @@ export class EmpresasComponent implements OnInit {
         this.load();
       },
       error: (e) => this.notify.error(apiErrorMessage(e, 'RUC no encontrado en CRM'))
+    });
+  }
+
+  syncCatalogo(): void {
+    if (!window.confirm('¿Sincronizar todas las empresas desde el CRM? Puede tardar varios minutos.')) return;
+
+    this.catalogLoading.set(true);
+    this.api.empresaSyncCatalogo().subscribe({
+      next: (r) => {
+        this.catalogLoading.set(false);
+        this.notify.success(
+          `Catálogo sincronizado: ${r.procesadas} procesadas (${r.nuevas} nuevas, ${r.actualizadas} actualizadas).`
+        );
+        this.load();
+      },
+      error: (e) => {
+        this.catalogLoading.set(false);
+        this.notify.error(apiErrorMessage(e, 'Error al sincronizar catálogo completo.'));
+      }
     });
   }
 

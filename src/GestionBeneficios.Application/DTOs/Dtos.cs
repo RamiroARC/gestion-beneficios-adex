@@ -2,7 +2,25 @@ namespace GestionBeneficios.Application.DTOs;
 
 public record PagedResult<T>(IReadOnlyList<T> Items, int Page, int PageSize, int Total);
 
-public record EmpresaDto(int EmpresaId, string CrmEmpresaId, string Ruc, string RazonSocial, string? Categoria, bool Activo, DateTime UltimaSyncUtc);
+public record EmpresaDto(
+    int EmpresaId,
+    string CrmEmpresaId,
+    string Ruc,
+    string RazonSocial,
+    string? Categoria,
+    bool Activo,
+    DateTime UltimaSyncUtc,
+    string? Correo = null,
+    string? Telefono = null,
+    string? PaginaWeb = null,
+    string? EjecutivoComercial = null,
+    string? Promotor = null,
+    string? Gerencia = null,
+    string? Comite = null,
+    string? EstadoCrm = null,
+    string? FechaAltaCrm = null,
+    DateTime? CrmCreatedOn = null);
+public record UpdateEmpresaRequest(string RazonSocial, string? Categoria, bool Activo);
 public record EmpresaDetalleDto(EmpresaDto Empresa, PuntosResumenDto Puntos);
 
 public record EmpresaSyncPeriodRequest(DateTime Inicio, DateTime Fin);
@@ -20,7 +38,10 @@ public record EmpresaSyncPreviewItemDto(
     string? Categoria,
     bool Activo,
     DateTime ActualizadoUtc,
-    bool YaExisteLocal);
+    bool YaExisteLocal,
+    string? Correo = null,
+    string? Promotor = null,
+    DateTime? CrmCreatedOn = null);
 
 public record EmpresaSyncPreviewDto(
     IReadOnlyList<EmpresaSyncPreviewItemDto> Items,
@@ -58,7 +79,7 @@ public record PuntoMovimientoDto(long MovimientoId, int EmpresaId, int? Contrata
 public record BeneficioDto(int BeneficioId, string Nombre, string? Descripcion, string? Tipo, decimal CostoPuntos, bool Activo);
 public record UpsertBeneficioRequest(string Nombre, string? Descripcion, string? Tipo, decimal CostoPuntos, bool Activo);
 
-public record CanjeDto(int CanjeId, int EmpresaId, int BeneficioId, string BeneficioNombre, decimal PuntosUsados, string Estado, DateTime FechaSolicitudUtc);
+public record CanjeDto(int CanjeId, int EmpresaId, string EmpresaRuc, string EmpresaRazonSocial, int BeneficioId, string BeneficioNombre, decimal PuntosUsados, string Estado, DateTime FechaSolicitudUtc);
 public record CreateCanjeRequest(int EmpresaId, int BeneficioId, string IdempotencyKey);
 
 public record PlantillaCorreoDto(int PlantillaId, string Codigo, string Asunto, string CuerpoHtml, string? Variables, bool Activo);
@@ -67,7 +88,10 @@ public record UpsertPlantillaRequest(string Codigo, string Asunto, string Cuerpo
 public record CorreoEnviadoDto(long CorreoId, string Destinatario, string Asunto, string Estado, int Intentos, DateTime CreadoUtc, DateTime? EnviadoUtc, string? Error);
 
 public record CargaMasivaDto(int CargaId, string NombreArchivo, string Usuario, string Estado, int TotalFilas, int FilasValidas, int FilasInvalidas, int FilasProcesadas, DateTime CreadoUtc);
-public record CargaDetalleDto(long DetalleId, int NumeroFila, bool EsValido, string? Errores, bool Procesado, string PayloadJson);
+public record CargaDetalleDto(
+    long DetalleId, int NumeroFila, bool EsValido, string? Errores, bool Procesado, string PayloadJson,
+    string Ruc, string CodigoAlumno, string Nombres, string Apellidos,
+    string FechaInicio, string FechaFin, string Sueldo, string Anio);
 
 public record AuditoriaDto(long AuditoriaId, string Usuario, DateTime FechaUtc, string Accion, string Entidad, string? EntidadId, string? ValorAnterior, string? ValorNuevo);
 

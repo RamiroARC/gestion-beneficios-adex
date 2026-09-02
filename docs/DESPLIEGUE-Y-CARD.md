@@ -12,7 +12,7 @@
 ### Checklist pre-producción
 
 - [ ] Reemplazar Dev JWT por Login Centros Académico
-- [ ] Reemplazar `MockCrmGremiosClient` por cliente HTTP real
+- [ ] Configurar `CrmEmpresas:CodUser` y `UseMock: false` en producción
 - [ ] Configurar SMTP / Graph para `IEmailSender`
 - [ ] Provider SQL Server + migraciones formales
 - [ ] CORS solo orígenes institucionales

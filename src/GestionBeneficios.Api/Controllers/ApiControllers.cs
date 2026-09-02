@@ -25,6 +25,11 @@ public class EmpresasController(EmpresaAppService service) : ControllerBase
         return item is null ? NotFound() : item;
     }
 
+    [HttpPut("{id:int}")]
+    [Authorize(Roles = "Administrador,Operador")]
+    public Task<EmpresaDto> Update(int id, [FromBody] UpdateEmpresaRequest req, CancellationToken ct) =>
+        service.UpdateAsync(id, req, ct);
+
     [HttpGet("sync/estado")]
     [Authorize(Roles = "Administrador,Operador")]
     public Task<EmpresaSyncEstadoDto> SyncEstado(CancellationToken ct) => service.GetSyncEstadoAsync(ct);
@@ -44,12 +49,8 @@ public class EmpresasController(EmpresaAppService service) : ControllerBase
     public Task<EmpresaDto> Sync(string ruc, CancellationToken ct) => service.SyncFromCrmByRucAsync(ruc, ct);
 
     [HttpPost("sync")]
-    [Authorize(Roles = "Administrador")]
-    public async Task<IActionResult> SyncAll(CancellationToken ct)
-    {
-        await service.SyncCatalogAsync(ct);
-        return NoContent();
-    }
+    [Authorize(Roles = "Administrador,Operador")]
+    public Task<EmpresaSyncResultDto> SyncAll(CancellationToken ct) => service.SyncCatalogAsync(ct);
 }
 
 [ApiController]

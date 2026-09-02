@@ -220,7 +220,7 @@ mat-card[appearance='outlined'] {
 .dialog-form {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--gb-space-3);
   min-width: min(480px, 80vw);
   padding-top: 8px;
 }

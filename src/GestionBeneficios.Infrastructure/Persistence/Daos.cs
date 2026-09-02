@@ -185,13 +185,13 @@ public class BeneficioDao(BeneficiosDbContext db) : IBeneficioDao
 public class CanjeDao(BeneficiosDbContext db) : ICanjeDao
 {
     public Task<Canje?> GetByIdempotencyAsync(string key, CancellationToken ct = default) =>
-        db.Canjes.Include(x => x.Beneficio).FirstOrDefaultAsync(x => x.IdempotencyKey == key, ct);
+        db.Canjes.Include(x => x.Beneficio).Include(x => x.Empresa).FirstOrDefaultAsync(x => x.IdempotencyKey == key, ct);
 
     public Task AddAsync(Canje canje, CancellationToken ct = default) => db.Canjes.AddAsync(canje, ct).AsTask();
 
     public async Task<(IReadOnlyList<Canje> Items, int Total)> ListAsync(int? empresaId, int page, int pageSize, CancellationToken ct = default)
     {
-        var query = db.Canjes.Include(x => x.Beneficio).AsQueryable();
+        var query = db.Canjes.Include(x => x.Beneficio).Include(x => x.Empresa).AsQueryable();
         if (empresaId is not null) query = query.Where(x => x.EmpresaId == empresaId);
         var total = await query.CountAsync(ct);
         var items = await query.OrderByDescending(x => x.FechaSolicitudUtc).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);

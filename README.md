@@ -30,7 +30,7 @@ gestion-beneficios-adex/
 Ver [docs/FASE0-DECISIONES-STUB.md](docs/FASE0-DECISIONES-STUB.md):
 
 - Auth: JWT de desarrollo (`POST /api/v1/auth/dev-token`) hasta Login Centros
-- CRM: `MockCrmGremiosClient`
+- CRM: `MockCrmEmpresasClient` (dev) / `CrmEmpresasHttpClient` (prod, API ADEX)
 - Puntos: titular = empresa; meses enteros; canje inmediato
 
 ## Backend
@@ -83,6 +83,7 @@ Importar [postman/GestionBeneficios.postman_collection.json](postman/GestionBene
 | Documento | Descripción |
 |-----------|-------------|
 | [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) | Arquitectura: capas, DI, queries, frontend (Markdown + diagramas Mermaid) |
+| [docs/MODELO-DATOS.md](docs/MODELO-DATOS.md) | Modelo de datos: ERD, diccionario de tablas, enums, flujo de puntos |
 | [docs/ARQUITECTURA-Gestion-Beneficios-ADEX.docx](docs/ARQUITECTURA-Gestion-Beneficios-ADEX.docx) | Misma arquitectura en formato Word |
 | [docs/FASE0-DECISIONES-STUB.md](docs/FASE0-DECISIONES-STUB.md) | Stubs auth, CRM, puntos |
 | [docs/DESPLIEGUE-Y-CARD.md](docs/DESPLIEGUE-Y-CARD.md) | Despliegue institucional |

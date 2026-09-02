@@ -32,6 +32,15 @@ public class BeneficiosDbContext(DbContextOptions<BeneficiosDbContext> options) 
             e.Property(x => x.Ruc).HasMaxLength(20);
             e.Property(x => x.RazonSocial).HasMaxLength(250);
             e.Property(x => x.CrmEmpresaId).HasMaxLength(64);
+            e.Property(x => x.Correo).HasMaxLength(250);
+            e.Property(x => x.Telefono).HasMaxLength(50);
+            e.Property(x => x.PaginaWeb).HasMaxLength(250);
+            e.Property(x => x.EjecutivoComercial).HasMaxLength(200);
+            e.Property(x => x.Promotor).HasMaxLength(200);
+            e.Property(x => x.Gerencia).HasMaxLength(200);
+            e.Property(x => x.Comite).HasMaxLength(200);
+            e.Property(x => x.EstadoCrm).HasMaxLength(100);
+            e.Property(x => x.FechaAltaCrm).HasMaxLength(50);
         });
 
         modelBuilder.Entity<Alumno>(e =>

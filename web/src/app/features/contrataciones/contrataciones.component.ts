@@ -3,8 +3,10 @@ import { PageEvent } from '@angular/material/paginator';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
 import { MatPaginatorModule } from '@angular/material/paginator';
 import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { Contratacion } from '../../core/models';
@@ -26,6 +28,8 @@ import { ContratacionFormDialogComponent } from './contratacion-form-dialog.comp
     MatCardModule,
     MatDialogModule,
     MatPaginatorModule,
+    MatIconModule,
+    MatTooltipModule,
     PageHeaderComponent,
     StatusChipComponent,
     EmptyStateComponent,
@@ -57,8 +61,18 @@ import { ContratacionFormDialogComponent } from './contratacion-form-dialog.comp
                 <th mat-header-cell *matHeaderCellDef>Estado</th>
                 <td mat-cell *matCellDef="let c"><app-status-chip [status]="c.estado" /></td>
               </ng-container>
-              <tr mat-header-row *matHeaderRowDef="cols"></tr>
-              <tr mat-row *matRowDef="let row; columns: cols"></tr>
+              @if (canWrite()) {
+                <ng-container matColumnDef="acciones">
+                  <th mat-header-cell *matHeaderCellDef></th>
+                  <td mat-cell *matCellDef="let c">
+                    <button mat-icon-button type="button" matTooltip="Editar" aria-label="Editar contratación" (click)="openForm(c); $event.stopPropagation()">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                  </td>
+                </ng-container>
+              }
+              <tr mat-header-row *matHeaderRowDef="cols()"></tr>
+              <tr mat-row *matRowDef="let row; columns: cols()" [class.row-selectable]="canWrite()" (click)="canWrite() && openForm(row)"></tr>
             </table>
           </div>
           <mat-paginator [length]="total()" [pageIndex]="page() - 1" [pageSize]="pageSize" [pageSizeOptions]="[10, 20, 50]" (page)="onPage($event)" showFirstLastButtons />
@@ -81,7 +95,10 @@ export class ContratacionesComponent implements OnInit {
   page = signal(1);
   pageSize = 20;
   loading = signal(true);
-  cols = ['id', 'empresa', 'alumno', 'vigencia', 'sueldo', 'puntos', 'estado'];
+  cols = computed(() => {
+    const base = ['id', 'empresa', 'alumno', 'vigencia', 'sueldo', 'puntos', 'estado'];
+    return this.canWrite() ? [...base, 'acciones'] : base;
+  });
 
   ngOnInit(): void {
     this.load();
@@ -111,17 +128,19 @@ export class ContratacionesComponent implements OnInit {
   }
 
   openNuevo(): void {
+    this.openForm();
+  }
+
+  openForm(contratacion?: Contratacion): void {
     this.dialog
       .open(ContratacionFormDialogComponent, {
         width: '760px',
-        autoFocus: 'first-tabbable'
+        autoFocus: 'first-tabbable',
+        data: { contratacion }
       })
       .afterClosed()
       .subscribe((saved) => {
-        if (saved) {
-          this.page.set(1);
-          this.load();
-        }
+        if (saved) this.load();
       });
   }
 }

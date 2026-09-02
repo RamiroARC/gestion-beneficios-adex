@@ -7,7 +7,7 @@
 | Integración | Enfoque temporal | Reemplazo esperado |
 |-------------|------------------|--------------------|
 | Login Centros Académico | JWT Bearer de desarrollo (`Authentication:DevJwt`) + roles claim | OIDC/JWT institucional |
-| CRM de Gremios | `MockCrmGremiosClient` con empresas de ejemplo | Cliente HTTP real según contrato |
+| CRM de Empresas | `MockCrmEmpresasClient` con empresas de ejemplo | `CrmEmpresasHttpClient` (API ADEX + JWT) |
 
 ## Decisiones de dominio (provisionales, marcadas en código)
 

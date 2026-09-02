@@ -13,6 +13,16 @@ export interface Empresa {
   categoria?: string;
   activo: boolean;
   ultimaSyncUtc: string;
+  correo?: string;
+  telefono?: string;
+  paginaWeb?: string;
+  ejecutivoComercial?: string;
+  promotor?: string;
+  gerencia?: string;
+  comite?: string;
+  estadoCrm?: string;
+  fechaAltaCrm?: string;
+  crmCreatedOn?: string;
 }
 
 export interface EmpresaSyncEstado {
@@ -30,6 +40,9 @@ export interface EmpresaSyncPreviewItem {
   activo: boolean;
   actualizadoUtc: string;
   yaExisteLocal: boolean;
+  correo?: string;
+  promotor?: string;
+  crmCreatedOn?: string;
 }
 
 export interface EmpresaSyncPreview {
@@ -101,6 +114,8 @@ export interface Beneficio {
 export interface Canje {
   canjeId: number;
   empresaId: number;
+  empresaRuc: string;
+  empresaRazonSocial: string;
   beneficioId: number;
   beneficioNombre: string;
   puntosUsados: number;
@@ -140,6 +155,14 @@ export interface CargaDetalle {
   errores?: string;
   procesado: boolean;
   payloadJson: string;
+  ruc: string;
+  codigoAlumno: string;
+  nombres: string;
+  apellidos: string;
+  fechaInicio: string;
+  fechaFin: string;
+  sueldo: string;
+  anio: string;
 }
 
 export interface PlantillaCorreo {

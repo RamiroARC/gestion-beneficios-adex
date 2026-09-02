@@ -1,7 +1,9 @@
 using GestionBeneficios.Application.Abstractions;
 using GestionBeneficios.Application.Services;
 using GestionBeneficios.Domain.Entities;
+using GestionBeneficios.Infrastructure.Crm;
 using GestionBeneficios.Infrastructure.Persistence;
+using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -92,7 +94,32 @@ public static class InfrastructureDependencyInjection
         services.AddScoped<ICargaMasivaDao, CargaMasivaDao>();
         services.AddScoped<IAuditoriaDao, AuditoriaDao>();
         services.AddScoped<IConfiguracionDao, ConfiguracionDao>();
-        services.AddSingleton<ICrmGremiosClient, MockCrmGremiosClient>();
+
+        services.Configure<CrmEmpresasOptions>(config.GetSection(CrmEmpresasOptions.SectionName));
+
+        var crmOptions = config.GetSection(CrmEmpresasOptions.SectionName).Get<CrmEmpresasOptions>() ?? new CrmEmpresasOptions();
+        if (crmOptions.UseMock)
+        {
+            services.AddSingleton<ICrmEmpresasClient, MockCrmEmpresasClient>();
+        }
+        else
+        {
+            services.AddSingleton<CrmEmpresasTokenProvider>();
+            services.AddHttpClient(CrmEmpresasHttpClient.AuthHttpClientName, (sp, client) =>
+            {
+                var opts = sp.GetRequiredService<IOptions<CrmEmpresasOptions>>().Value;
+                client.BaseAddress = new Uri(opts.BaseUrl.TrimEnd('/') + "/");
+                client.Timeout = TimeSpan.FromSeconds(Math.Clamp(opts.RequestTimeoutSeconds, 10, 300));
+            });
+
+            services.AddHttpClient<ICrmEmpresasClient, CrmEmpresasHttpClient>((sp, client) =>
+            {
+                var opts = sp.GetRequiredService<IOptions<CrmEmpresasOptions>>().Value;
+                client.BaseAddress = new Uri(opts.BaseUrl.TrimEnd('/') + "/");
+                client.Timeout = TimeSpan.FromSeconds(Math.Clamp(opts.RequestTimeoutSeconds, 10, 300));
+            });
+        }
+
         services.AddSingleton<IEmailSender, LoggingEmailSender>();
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUser, HttpCurrentUser>();
@@ -105,7 +132,9 @@ public static class InfrastructureDependencyInjection
     {
         using var scope = sp.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<BeneficiosDbContext>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Seed");
         await db.Database.EnsureCreatedAsync();
+        await EmpresaSchemaPatcher.ApplyAsync(db, logger);
 
         if (!await db.PlantillasCorreo.AnyAsync())
         {

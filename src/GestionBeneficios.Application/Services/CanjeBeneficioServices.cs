@@ -167,7 +167,7 @@ public class CanjeAppService(
     }
 
     private static CanjeDto Map(Canje c) =>
-        new(c.CanjeId, c.EmpresaId, c.BeneficioId, c.Beneficio?.Nombre ?? "", c.PuntosUsados, c.Estado.ToString(), c.FechaSolicitudUtc);
+        new(c.CanjeId, c.EmpresaId, c.Empresa?.Ruc ?? "", c.Empresa?.RazonSocial ?? "", c.BeneficioId, c.Beneficio?.Nombre ?? "", c.PuntosUsados, c.Estado.ToString(), c.FechaSolicitudUtc);
 }
 
 public class PuntosAppService(IPuntosDao puntos, IUnitOfWork uow, IAuditoriaDao auditoria, ICurrentUser user)

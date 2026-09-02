@@ -14,7 +14,7 @@ public class CargaMasivaAppService(
     ICargaMasivaDao cargas,
     IEmpresaDao empresas,
     IAlumnoDao alumnos,
-    ICrmGremiosClient crm,
+    IContratacionDao contrataciones,
     ContratacionAppService contratacionService,
     IUnitOfWork uow,
     IAuditoriaDao auditoria,
@@ -26,7 +26,8 @@ public class CargaMasivaAppService(
             throw new InvalidOperationException("Solo se aceptan archivos .xlsx");
 
         using var workbook = new XLWorkbook(stream);
-        var sheet = workbook.Worksheets.First();
+        var sheet = workbook.Worksheets.FirstOrDefault(w =>
+            w.Name.Equals("Carga", StringComparison.OrdinalIgnoreCase)) ?? workbook.Worksheets.First();
         var headers = sheet.Row(1).CellsUsed().Select(c => c.GetString().Trim().ToLowerInvariant()).ToList();
         var required = new[] { "ruc", "codigoalumno", "nombres", "apellidos", "fechainicio", "fechafin", "sueldo", "anio", "mescontratacion" };
         foreach (var col in required)
@@ -75,6 +76,7 @@ public class CargaMasivaAppService(
             if (!DateOnly.TryParse(payload["fechaInicio"], CultureInfo.InvariantCulture, out var fechaInicio)) errors.Add("FechaInicio inválida");
             if (!DateOnly.TryParse(payload["fechaFin"], CultureInfo.InvariantCulture, out var fechaFin)) errors.Add("FechaFin inválida");
             if (!decimal.TryParse(payload["sueldo"], NumberStyles.Number, CultureInfo.InvariantCulture, out _)) errors.Add("Sueldo inválido");
+            if (!int.TryParse(payload["anio"], NumberStyles.Integer, CultureInfo.InvariantCulture, out _)) errors.Add("Anio inválido");
 
             if (errors.Count == 0)
             {
@@ -88,14 +90,22 @@ public class CargaMasivaAppService(
                 }
             }
 
+            EmpresaAsociada? empresaLocal = null;
+            Alumno? alumnoLocal = null;
+
             if (!string.IsNullOrWhiteSpace(payload["ruc"]))
             {
-                var local = await empresas.GetByRucAsync(payload["ruc"], ct);
-                if (local is null)
-                {
-                    var crmEmpresa = await crm.GetByRucAsync(payload["ruc"], ct);
-                    if (crmEmpresa is null) errors.Add("Empresa inexistente en CRM");
-                }
+                empresaLocal = await empresas.GetByRucAsync(payload["ruc"], ct);
+                if (empresaLocal is null) errors.Add("Empresa no registrada (RUC inexistente)");
+            }
+
+            if (!string.IsNullOrWhiteSpace(payload["codigoAlumno"]))
+                alumnoLocal = await alumnos.GetByCodigoAsync(payload["codigoAlumno"], ct);
+
+            if (errors.Count == 0 && alumnoLocal is not null)
+            {
+                if (await contrataciones.ExisteSolapeAsync(alumnoLocal.AlumnoId, fechaInicio, fechaFin, null, ct))
+                    errors.Add($"El alumno (DNI {payload["codigoAlumno"]}) ya tiene una contratación vigente en ese periodo ({payload["fechaInicio"]} – {payload["fechaFin"]})");
             }
 
             carga.Detalles.Add(new CargaMasivaDetalle
@@ -132,7 +142,7 @@ public class CargaMasivaAppService(
     public async Task<IReadOnlyList<CargaDetalleDto>> GetDetallesAsync(int id, CancellationToken ct = default)
     {
         var c = await cargas.GetByIdAsync(id, true, ct) ?? throw new KeyNotFoundException("Carga no encontrada.");
-        return c.Detalles.Select(d => new CargaDetalleDto(d.DetalleId, d.NumeroFila, d.EsValido, d.Errores, d.Procesado, d.PayloadJson)).ToList();
+        return c.Detalles.Select(MapDetalle).ToList();
     }
 
     public async Task<CargaMasivaDto> ConfirmarAsync(int id, CancellationToken ct = default)
@@ -150,23 +160,8 @@ public class CargaMasivaAppService(
             var payload = JsonSerializer.Deserialize<Dictionary<string, string>>(det.PayloadJson)!;
             try
             {
-                var empresa = await empresas.GetByRucAsync(payload["ruc"], ct);
-                if (empresa is null)
-                {
-                    var crmEmpresa = await crm.GetByRucAsync(payload["ruc"], ct)
-                        ?? throw new InvalidOperationException("Empresa CRM no encontrada");
-                    empresa = new EmpresaAsociada
-                    {
-                        CrmEmpresaId = crmEmpresa.CrmEmpresaId,
-                        Ruc = crmEmpresa.Ruc,
-                        RazonSocial = crmEmpresa.RazonSocial,
-                        Categoria = crmEmpresa.Categoria,
-                        Activo = crmEmpresa.Activo,
-                        UltimaSyncUtc = DateTime.UtcNow
-                    };
-                    await empresas.UpsertAsync(empresa, ct);
-                    await uow.SaveChangesAsync(ct);
-                }
+                var empresa = await empresas.GetByRucAsync(payload["ruc"], ct)
+                    ?? throw new InvalidOperationException("Empresa no registrada (RUC inexistente)");
 
                 var alumno = await alumnos.GetByCodigoAsync(payload["codigoAlumno"], ct);
                 if (alumno is null)
@@ -286,8 +281,8 @@ public class CargaMasivaAppService(
         info.Row(1).Style.Font.Bold = true;
         var rows = new (string Campo, string Obligatorio, string Formato)[]
         {
-            ("ruc", "Sí", "11 dígitos. Debe existir en CRM de Gremios."),
-            ("codigoalumno", "Sí", "Nro. DNI (8 dígitos)."),
+            ("ruc", "Sí", "11 dígitos. Debe existir en Empresas asociadas."),
+            ("codigoalumno", "Sí", "Nro. DNI (8 dígitos). Se crea en Alumnos si no existe."),
             ("nombres", "Sí", "Texto."),
             ("apellidos", "Sí", "Texto."),
             ("fechainicio", "Sí", "Fecha yyyy-MM-dd (ejemplo: 2026-03-01)."),
@@ -320,6 +315,16 @@ public class CargaMasivaAppService(
         var idx = headers.IndexOf(name);
         if (idx < 0) return "";
         return row.Cell(idx + 1).GetString().Trim();
+    }
+
+    private static CargaDetalleDto MapDetalle(CargaMasivaDetalle d)
+    {
+        var payload = JsonSerializer.Deserialize<Dictionary<string, string>>(d.PayloadJson) ?? new();
+        string Get(string key) => payload.GetValueOrDefault(key) ?? "";
+        return new CargaDetalleDto(
+            d.DetalleId, d.NumeroFila, d.EsValido, d.Errores, d.Procesado, d.PayloadJson,
+            Get("ruc"), Get("codigoAlumno"), Get("nombres"), Get("apellidos"),
+            Get("fechaInicio"), Get("fechaFin"), Get("sueldo"), Get("anio"));
     }
 
     private static CargaMasivaDto Map(CargaMasiva c) =>
