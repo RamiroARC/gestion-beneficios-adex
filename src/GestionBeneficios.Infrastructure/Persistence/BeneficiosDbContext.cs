@@ -48,9 +48,16 @@ public class BeneficiosDbContext(DbContextOptions<BeneficiosDbContext> options) 
             e.ToTable("Alumno");
             e.HasKey(x => x.AlumnoId);
             e.HasIndex(x => x.CodigoAlumno).IsUnique();
+            e.HasIndex(x => x.CrmAlumnoCodigo);
+            e.HasIndex(x => x.Dni);
             e.Property(x => x.CodigoAlumno).HasMaxLength(50);
+            e.Property(x => x.CrmAlumnoCodigo).HasMaxLength(50);
+            e.Property(x => x.Dni).HasMaxLength(20);
             e.Property(x => x.Nombres).HasMaxLength(120);
             e.Property(x => x.Apellidos).HasMaxLength(120);
+            e.Property(x => x.EmailPersonal).HasMaxLength(250);
+            e.Property(x => x.Modalidad).HasMaxLength(100);
+            e.Property(x => x.Denominacion).HasMaxLength(200);
         });
 
         modelBuilder.Entity<Sectorista>(e =>

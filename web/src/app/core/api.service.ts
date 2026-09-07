@@ -3,6 +3,9 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 import {
   Alumno,
+  AlumnoSyncEstado,
+  AlumnoSyncPreview,
+  AlumnoSyncResult,
   Auditoria,
   Beneficio,
   Canje,
@@ -83,6 +86,30 @@ export class ApiService {
 
   updateAlumno(id: number, body: Partial<Alumno>) {
     return this.http.put<Alumno>(`${this.base}/alumnos/${id}`, body);
+  }
+
+  alumno(id: number) {
+    return this.http.get<Alumno>(`${this.base}/alumnos/${id}`);
+  }
+
+  syncAlumno(criterio: string) {
+    return this.http.post<Alumno>(`${this.base}/alumnos/sync/${encodeURIComponent(criterio)}`, {});
+  }
+
+  alumnoSyncCatalogo() {
+    return this.http.post<AlumnoSyncResult>(`${this.base}/alumnos/sync`, {});
+  }
+
+  alumnoSyncEstado() {
+    return this.http.get<AlumnoSyncEstado>(`${this.base}/alumnos/sync/estado`);
+  }
+
+  alumnoSyncPreview(inicio: string, fin: string) {
+    return this.http.post<AlumnoSyncPreview>(`${this.base}/alumnos/sync/preview`, { inicio, fin });
+  }
+
+  alumnoSyncProcesar(inicio: string, fin: string) {
+    return this.http.post<AlumnoSyncResult>(`${this.base}/alumnos/sync/procesar`, { inicio, fin });
   }
 
   contrataciones(empresaId?: number, page = 1, pageSize = 20) {

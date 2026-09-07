@@ -49,6 +49,16 @@ public class AlumnoDao(BeneficiosDbContext db) : IAlumnoDao
     public Task<Alumno?> GetByCodigoAsync(string codigo, CancellationToken ct = default) =>
         db.Alumnos.FirstOrDefaultAsync(x => x.CodigoAlumno == codigo, ct);
 
+    public Task<Alumno?> GetByDniAsync(string dni, CancellationToken ct = default)
+    {
+        var trimmed = dni.Trim();
+        return db.Alumnos.FirstOrDefaultAsync(x =>
+            x.Dni == trimmed || x.CodigoAlumno == trimmed, ct);
+    }
+
+    public Task<Alumno?> GetByCrmCodigoAsync(string crmCodigo, CancellationToken ct = default) =>
+        db.Alumnos.FirstOrDefaultAsync(x => x.CrmAlumnoCodigo == crmCodigo, ct);
+
     public async Task<(IReadOnlyList<Alumno> Items, int Total)> SearchAsync(string? q, int page, int pageSize, CancellationToken ct = default)
     {
         var query = db.Alumnos.AsQueryable();
@@ -57,6 +67,8 @@ public class AlumnoDao(BeneficiosDbContext db) : IAlumnoDao
             var term = q.Trim().ToLower();
             query = query.Where(x =>
                 x.CodigoAlumno.ToLower().Contains(term) ||
+                (x.Dni != null && x.Dni.ToLower().Contains(term)) ||
+                (x.CrmAlumnoCodigo != null && x.CrmAlumnoCodigo.ToLower().Contains(term)) ||
                 x.Nombres.ToLower().Contains(term) ||
                 x.Apellidos.ToLower().Contains(term));
         }
@@ -70,6 +82,12 @@ public class AlumnoDao(BeneficiosDbContext db) : IAlumnoDao
     {
         db.Alumnos.Update(alumno);
         return Task.CompletedTask;
+    }
+
+    public async Task UpsertAsync(Alumno alumno, CancellationToken ct = default)
+    {
+        if (alumno.AlumnoId == 0) await db.Alumnos.AddAsync(alumno, ct);
+        else db.Alumnos.Update(alumno);
     }
 }
 

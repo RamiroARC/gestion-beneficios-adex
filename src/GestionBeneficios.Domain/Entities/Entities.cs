@@ -29,12 +29,19 @@ public class Alumno
 {
     public int AlumnoId { get; set; }
     public string CodigoAlumno { get; set; } = string.Empty;
+    public string? CrmAlumnoCodigo { get; set; }
+    public string? Dni { get; set; }
     public string Nombres { get; set; } = string.Empty;
     public string Apellidos { get; set; } = string.Empty;
     public string? Carrera { get; set; }
     public string? Ciclo { get; set; }
     public string? Telefono { get; set; }
     public string? Correo { get; set; }
+    public string? EmailPersonal { get; set; }
+    public string? Modalidad { get; set; }
+    public DateTime? FechaNacimiento { get; set; }
+    public string? Denominacion { get; set; }
+    public DateTime? UltimaSyncUtc { get; set; }
     public DateTime CreadoUtc { get; set; } = DateTime.UtcNow;
 
     public ICollection<Contratacion> Contrataciones { get; set; } = new List<Contratacion>();

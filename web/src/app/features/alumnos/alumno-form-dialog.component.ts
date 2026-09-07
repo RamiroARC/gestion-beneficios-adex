@@ -1,4 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -23,6 +24,7 @@ export interface AlumnoFormDialogData {
   standalone: true,
   imports: [
     ReactiveFormsModule,
+    DatePipe,
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
@@ -30,13 +32,13 @@ export interface AlumnoFormDialogData {
     MatButtonModule
   ],
   template: `
-    <h2 mat-dialog-title>{{ isEdit ? 'Editar alumno' : 'Nuevo alumno' }}</h2>
+    <h2 mat-dialog-title>Editar alumno</h2>
     <mat-dialog-content>
       <form class="dialog-form" [formGroup]="form" (ngSubmit)="save()">
         <mat-form-field appearance="outline">
           <mat-label>Nro. DNI</mat-label>
           <input matInput formControlName="codigoAlumno" maxlength="8" inputmode="numeric" autocomplete="off" />
-          <mat-hint>8 dígitos</mat-hint>
+          <mat-hint>8 dígitos (alta manual)</mat-hint>
           @if (form.controls.codigoAlumno.touched && form.controls.codigoAlumno.invalid) {
             <mat-error>Ingrese un DNI de 8 dígitos.</mat-error>
           }
@@ -57,14 +59,48 @@ export interface AlumnoFormDialogData {
         <mat-form-field appearance="outline"><mat-label>Ciclo</mat-label><input matInput formControlName="ciclo" /></mat-form-field>
         <mat-form-field appearance="outline"><mat-label>Teléfono</mat-label><input matInput formControlName="telefono" /></mat-form-field>
         <mat-form-field appearance="outline"><mat-label>Correo</mat-label><input matInput formControlName="correo" type="email" /></mat-form-field>
+
+        @if (hasCrmData) {
+          <h3 class="crm-title">Datos CRM</h3>
+          <div class="crm-grid">
+            <div><dt>Código CRM</dt><dd>{{ data.alumno?.crmAlumnoCodigo || '—' }}</dd></div>
+            <div><dt>DNI CRM</dt><dd>{{ data.alumno?.dni || '—' }}</dd></div>
+            <div><dt>Email personal</dt><dd>{{ data.alumno?.emailPersonal || '—' }}</dd></div>
+            <div><dt>Modalidad</dt><dd>{{ data.alumno?.modalidad || '—' }}</dd></div>
+            <div><dt>Fecha nacimiento</dt><dd>{{ data.alumno?.fechaNacimiento ? (data.alumno!.fechaNacimiento | date: 'mediumDate') : '—' }}</dd></div>
+            <div><dt>Denominación</dt><dd>{{ data.alumno?.denominacion || '—' }}</dd></div>
+            <div><dt>Última sync</dt><dd>{{ data.alumno?.ultimaSyncUtc ? (data.alumno!.ultimaSyncUtc | date: 'short') : '—' }}</dd></div>
+          </div>
+        }
       </form>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button type="button" mat-dialog-close>Cancelar</button>
       <button mat-flat-button type="button" (click)="save()" [disabled]="form.invalid || saving()">
-        {{ isEdit ? 'Guardar' : 'Registrar' }}
+        Guardar
       </button>
     </mat-dialog-actions>
+  `,
+  styles: `
+    .crm-title {
+      margin: 1rem 0 0.5rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+    .crm-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .crm-grid dt {
+      font-size: 0.75rem;
+      opacity: 0.7;
+    }
+    .crm-grid dd {
+      margin: 0;
+      font-size: 0.9rem;
+    }
   `
 })
 export class AlumnoFormDialogComponent {
@@ -73,14 +109,18 @@ export class AlumnoFormDialogComponent {
   private readonly notify = inject(NotifyService);
   private readonly dialog = inject(MatDialog);
   private readonly dialogRef = inject(MatDialogRef<AlumnoFormDialogComponent, boolean>);
-  private readonly data = inject<AlumnoFormDialogData>(MAT_DIALOG_DATA);
+  readonly data = inject<AlumnoFormDialogData>(MAT_DIALOG_DATA);
   readonly carreras = inject(CarreraCatalogService);
 
   saving = signal(false);
   isEdit = !!this.data.alumno;
+  hasCrmData = !!(this.data.alumno?.crmAlumnoCodigo || this.data.alumno?.ultimaSyncUtc);
 
   form = this.fb.nonNullable.group({
-    codigoAlumno: [this.data.alumno?.codigoAlumno ?? '', [Validators.required, Validators.pattern(DNI_PATTERN)]],
+    codigoAlumno: [
+      this.data.alumno?.dni || this.data.alumno?.codigoAlumno || '',
+      [Validators.required, Validators.pattern(DNI_PATTERN)]
+    ],
     nombres: [this.data.alumno?.nombres ?? '', Validators.required],
     apellidos: [this.data.alumno?.apellidos ?? '', Validators.required],
     carrera: [this.data.alumno?.carrera ?? ''],
@@ -107,33 +147,30 @@ export class AlumnoFormDialogComponent {
   }
 
   save(): void {
-    if (this.form.invalid || this.saving()) return;
+    if (this.form.invalid || this.saving() || !this.data.alumno) return;
     this.saving.set(true);
     const raw = this.form.getRawValue();
     if (raw.carrera) this.carreras.add(raw.carrera);
 
-    const req$ = this.isEdit
-      ? this.api.updateAlumno(this.data.alumno!.alumnoId, {
-          nombres: raw.nombres,
-          apellidos: raw.apellidos,
-          carrera: raw.carrera,
-          ciclo: raw.ciclo,
-          telefono: raw.telefono,
-          correo: raw.correo
-        })
-      : this.api.createAlumno(raw);
-
-    req$.subscribe({
-      next: (a) => {
-        this.notify.success(
-          this.isEdit ? `Alumno DNI ${a.codigoAlumno} actualizado.` : `Alumno DNI ${a.codigoAlumno} registrado.`
-        );
-        this.dialogRef.close(true);
-      },
-      error: (e) => {
-        this.saving.set(false);
-        this.notify.error(apiErrorMessage(e, this.isEdit ? 'Error al guardar' : 'Error al registrar'));
-      }
-    });
+    this.api
+      .updateAlumno(this.data.alumno.alumnoId, {
+        nombres: raw.nombres,
+        apellidos: raw.apellidos,
+        carrera: raw.carrera,
+        ciclo: raw.ciclo,
+        telefono: raw.telefono,
+        correo: raw.correo
+      })
+      .subscribe({
+        next: (a) => {
+          const label = a.dni || a.codigoAlumno;
+          this.notify.success(`Alumno DNI ${label} actualizado.`);
+          this.dialogRef.close(true);
+        },
+        error: (e) => {
+          this.saving.set(false);
+          this.notify.error(apiErrorMessage(e, 'Error al guardar'));
+        }
+      });
   }
 }

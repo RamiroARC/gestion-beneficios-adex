@@ -169,6 +169,7 @@ public class CargaMasivaAppService(
                     alumno = new Alumno
                     {
                         CodigoAlumno = payload["codigoAlumno"],
+                        Dni = payload["codigoAlumno"],
                         Nombres = payload["nombres"],
                         Apellidos = payload["apellidos"],
                         Carrera = payload.GetValueOrDefault("carrera"),

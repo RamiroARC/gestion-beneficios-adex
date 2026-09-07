@@ -194,21 +194,28 @@ Empresas asociadas a ADEX, sincronizadas desde CRM de Empresas (API ADEX).
 
 ### 3.2 Alumno
 
-Alumnos contratados por empresas asociadas. `CodigoAlumno` suele ser el DNI.
+Alumnos contratados por empresas asociadas. Alta manual / carga masiva o sync CRM. `CodigoAlumno` en alta manual suele ser el DNI; tras sync CRM es el código académico (`codAlumno`).
 
 | Columna | Tipo | NN | Default | Restricciones |
 |---------|------|----|---------|---------------|
 | `AlumnoId` | int | Sí | auto | **PK** |
 | `CodigoAlumno` | string(50) | Sí | `""` | **UK** |
+| `CrmAlumnoCodigo` | string(50) | No | null | Índice; = `codAlumno` CRM |
+| `Dni` | string(20) | No | null | Índice |
 | `Nombres` | string(120) | Sí | `""` | — |
 | `Apellidos` | string(120) | Sí | `""` | — |
 | `Carrera` | string | No | null | — |
 | `Ciclo` | string | No | null | — |
 | `Telefono` | string | No | null | — |
-| `Correo` | string | No | null | — |
+| `Correo` | string | No | null | Institucional |
+| `EmailPersonal` | string(250) | No | null | CRM |
+| `Modalidad` | string(100) | No | null | CRM |
+| `FechaNacimiento` | datetime | No | null | CRM |
+| `Denominacion` | string(200) | No | null | CRM |
+| `UltimaSyncUtc` | datetime | No | null | Última sync CRM |
 | `CreadoUtc` | datetime | Sí | `UtcNow` | — |
 
-**Relaciones:** 1:N → `Contratacion` (FK EF).
+**Relaciones:** 1:N → `Contratacion` (FK EF). Detalle CRM: [CRM-ALUMNOS.md](CRM-ALUMNOS.md).
 
 ---
 
@@ -575,9 +582,18 @@ DTOs en `src/GestionBeneficios.Application/DTOs/Dtos.cs`. Contrato JSON en `web/
 
 ### CRM de Empresas (API ADEX)
 
+Documentación completa: [CRM-EMPRESAS.md](CRM-EMPRESAS.md).
+
 - Clave de correlación: `EmpresaAsociada.CrmEmpresaId` (único).
 - Sync vía `EmpresaAppService` + `ICrmEmpresasClient` (`MockCrmEmpresasClient` en dev, `CrmEmpresasHttpClient` en prod).
 - RUC y CRM ID son **readonly** en edición local; razón social y categoría sí se actualizan.
+
+### CRM de Alumnos (API ADEX)
+
+Documentación completa: [CRM-ALUMNOS.md](CRM-ALUMNOS.md).
+
+- Sync on-demand por DNI/código: `GET /api/alumnos/buscar/{criterio}` (auth compartida con Empresas).
+- Alta manual y carga masiva siguen disponibles.
 
 ### Autenticación
 
@@ -598,6 +614,8 @@ DTOs en `src/GestionBeneficios.Application/DTOs/Dtos.cs`. Contrato JSON en `web/
 | [ARQUITECTURA.md](ARQUITECTURA.md) | Capas, DI, endpoints, flujos HTTP |
 | [FASE0-DECISIONES-STUB.md](FASE0-DECISIONES-STUB.md) | Stubs auth, CRM, reglas provisionales |
 | [CARGA-MASIVA-EXCEL.md](CARGA-MASIVA-EXCEL.md) | Formato del archivo Excel |
+| [CRM-EMPRESAS.md](CRM-EMPRESAS.md) | Integración CRM de Empresas ADEX |
+| [CRM-ALUMNOS.md](CRM-ALUMNOS.md) | Integración CRM de Alumnos ADEX |
 
 **Código fuente:**
 

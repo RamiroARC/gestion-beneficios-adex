@@ -418,7 +418,7 @@ Guards: `authGuard` (shell) + `roleGuard` (por ruta, lee `route.data.roles`).
 | Integración | Implementación actual | Futuro |
 |-------------|----------------------|--------|
 | Auth | `POST /api/v1/auth/dev-token` — JWT HS256 24h | Login Centros Académico |
-| CRM | `MockCrmEmpresasClient` (dev) / `CrmEmpresasHttpClient` (prod) | API ADEX `listarAsociados` + JWT |
+| CRM | `MockCrmEmpresasClient` / `CrmEmpresasHttpClient` (empresas); `MockCrmAlumnosClient` / `CrmAlumnosHttpClient` (alumnos) | API ADEX — ver [CRM-EMPRESAS.md](CRM-EMPRESAS.md), [CRM-ALUMNOS.md](CRM-ALUMNOS.md) |
 | Email | `LoggingEmailSender` (log only) | SMTP / servicio institucional |
 
 **Roles JWT:** `Administrador`, `Operador`, `Consulta`, `GestionBeneficios`.
@@ -455,6 +455,8 @@ dotnet test
 | [FASE0-DECISIONES-STUB.md](FASE0-DECISIONES-STUB.md) | Decisiones stub auth/CRM/puntos |
 | [DESPLIEGUE-Y-CARD.md](DESPLIEGUE-Y-CARD.md) | Despliegue institucional |
 | [CARGA-MASIVA-EXCEL.md](CARGA-MASIVA-EXCEL.md) | Formato Excel cargas |
+| [CRM-EMPRESAS.md](CRM-EMPRESAS.md) | Integración CRM de Empresas ADEX |
+| [CRM-ALUMNOS.md](CRM-ALUMNOS.md) | Integración CRM de Alumnos ADEX |
 | [postman/GestionBeneficios.postman_collection.json](../postman/GestionBeneficios.postman_collection.json) | Colección API |
 | [ARQUITECTURA-Gestion-Beneficios-ADEX.docx](ARQUITECTURA-Gestion-Beneficios-ADEX.docx) | Versión Word de este documento |
 

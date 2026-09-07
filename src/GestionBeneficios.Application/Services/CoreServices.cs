@@ -60,6 +60,7 @@ public class EmpresaAppService(
                 item.ActualizadoUtc,
                 exists,
                 item.Correo,
+                item.Telefono,
                 item.Promotor,
                 item.CrmCreatedOn));
         }
@@ -238,12 +239,101 @@ public class EmpresaAppService(
             e.CrmCreatedOn);
 }
 
-public class AlumnoAppService(IAlumnoDao alumnos, IUnitOfWork uow, IAuditoriaDao auditoria, ICurrentUser user)
+public class AlumnoAppService(
+    IAlumnoDao alumnos,
+    ICrmAlumnosClient crm,
+    IUnitOfWork uow,
+    IAuditoriaDao auditoria,
+    IConfiguracionDao configuracion,
+    ICurrentUser user)
 {
+    private const string SyncInicioKey = "AlumnoSync.UltimoInicio";
+    private const string SyncFinKey = "AlumnoSync.UltimoFin";
+    private const int SyncOffsetMinutos = 10;
+
     public async Task<PagedResult<AlumnoDto>> SearchAsync(string? q, int page, int pageSize, CancellationToken ct = default)
     {
         var (items, total) = await alumnos.SearchAsync(q, page, pageSize, ct);
         return new(items.Select(Map).ToList(), page, pageSize, total);
+    }
+
+    public async Task<AlumnoDto?> GetByIdAsync(int id, CancellationToken ct = default)
+    {
+        var a = await alumnos.GetByIdAsync(id, ct);
+        return a is null ? null : Map(a);
+    }
+
+    public async Task<AlumnoSyncEstadoDto> GetSyncEstadoAsync(CancellationToken ct = default)
+    {
+        var inicio = await ReadDateAsync(SyncInicioKey, ct);
+        var fin = await ReadDateAsync(SyncFinKey, ct);
+        DateTime? sugerido = fin?.AddMinutes(-SyncOffsetMinutos);
+        return new(inicio, fin, sugerido, SyncOffsetMinutos);
+    }
+
+    public async Task<AlumnoSyncPreviewDto> PreviewSyncAsync(EmpresaSyncPeriodRequest req, CancellationToken ct = default)
+    {
+        var (inicio, fin) = NormalizePeriod(req.Inicio, req.Fin);
+        var crmItems = await crm.SearchByPeriodAsync(inicio, fin, ct);
+        var preview = new List<AlumnoSyncPreviewItemDto>();
+        foreach (var item in crmItems)
+        {
+            var exists = await alumnos.GetByCrmCodigoAsync(item.CodAlumno, ct) is not null
+                         || await alumnos.GetByDniAsync(item.Dni, ct) is not null
+                         || await alumnos.GetByCodigoAsync(item.CodAlumno, ct) is not null;
+            preview.Add(new AlumnoSyncPreviewItemDto(
+                item.CodAlumno,
+                item.Dni,
+                item.Nombres,
+                item.Apellidos,
+                item.Carrera,
+                item.Ciclo,
+                exists,
+                item.ActualizadoUtc,
+                item.Correo,
+                item.Modalidad,
+                item.CrmCreatedOn));
+        }
+        return new(preview, preview.Count, inicio, fin);
+    }
+
+    public async Task<AlumnoSyncResultDto> ProcesarSyncAsync(EmpresaSyncPeriodRequest req, CancellationToken ct = default)
+    {
+        var (inicio, fin) = NormalizePeriod(req.Inicio, req.Fin);
+        var crmItems = await crm.SearchByPeriodAsync(inicio, fin, ct);
+        var (nuevas, actualizadas) = await UpsertManyFromCrmAsync(crmItems, ct);
+
+        await configuracion.SetValorAsync(SyncInicioKey, inicio.ToString("O"), ct);
+        await configuracion.SetValorAsync(SyncFinKey, fin.ToString("O"), ct);
+
+        await auditoria.AddAsync(new AuditoriaEvento
+        {
+            Usuario = user.UserName,
+            Accion = "SYNC_CRM_ALUMNO_PERIODO",
+            Entidad = nameof(Alumno),
+            ValorNuevo = JsonSerializer.Serialize(new { inicio, fin, procesadas = crmItems.Count, nuevas, actualizadas })
+        }, ct);
+        await uow.SaveChangesAsync(ct);
+
+        return new(crmItems.Count, nuevas, actualizadas, inicio, fin);
+    }
+
+    public async Task<AlumnoSyncResultDto> SyncCatalogAsync(CancellationToken ct = default)
+    {
+        var list = await crm.SearchAsync(null, ct);
+        var (nuevas, actualizadas) = await UpsertManyFromCrmAsync(list, ct);
+        var now = DateTime.UtcNow;
+
+        await auditoria.AddAsync(new AuditoriaEvento
+        {
+            Usuario = user.UserName,
+            Accion = "SYNC_CRM_ALUMNO_CATALOGO",
+            Entidad = nameof(Alumno),
+            ValorNuevo = JsonSerializer.Serialize(new { procesadas = list.Count, nuevas, actualizadas })
+        }, ct);
+        await uow.SaveChangesAsync(ct);
+
+        return new(list.Count, nuevas, actualizadas, now, now);
     }
 
     public async Task<AlumnoDto> CreateAsync(CreateAlumnoRequest req, CancellationToken ct = default)
@@ -260,6 +350,7 @@ public class AlumnoAppService(IAlumnoDao alumnos, IUnitOfWork uow, IAuditoriaDao
         var a = new Alumno
         {
             CodigoAlumno = codigo,
+            Dni = codigo,
             Nombres = nombres,
             Apellidos = apellidos,
             Carrera = string.IsNullOrWhiteSpace(req.Carrera) ? null : req.Carrera.Trim(),
@@ -305,8 +396,109 @@ public class AlumnoAppService(IAlumnoDao alumnos, IUnitOfWork uow, IAuditoriaDao
         return Map(a);
     }
 
+    public async Task<AlumnoDto> SyncFromCrmByCriterioAsync(string criterio, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(criterio))
+            throw new InvalidOperationException("Indique DNI o código de alumno.");
+
+        var crmAlumno = await crm.GetByCriterioAsync(criterio.Trim(), ct)
+            ?? throw new InvalidOperationException("Alumno inexistente en el CRM de Alumnos.");
+
+        var existing = await UpsertFromCrmAsync(crmAlumno, ct);
+        await uow.SaveChangesAsync(ct);
+        await auditoria.AddAsync(new AuditoriaEvento
+        {
+            Usuario = user.UserName,
+            Accion = "SYNC_CRM_ALUMNO",
+            Entidad = nameof(Alumno),
+            EntidadId = existing.AlumnoId.ToString(),
+            ValorNuevo = JsonSerializer.Serialize(crmAlumno)
+        }, ct);
+        await uow.SaveChangesAsync(ct);
+        return Map(existing);
+    }
+
+    private async Task<(int Nuevas, int Actualizadas)> UpsertManyFromCrmAsync(
+        IReadOnlyList<CrmAlumnoDto> items,
+        CancellationToken ct)
+    {
+        var nuevas = 0;
+        var actualizadas = 0;
+
+        foreach (var item in items)
+        {
+            var existing = await alumnos.GetByCrmCodigoAsync(item.CodAlumno, ct)
+                ?? await alumnos.GetByDniAsync(item.Dni, ct)
+                ?? await alumnos.GetByCodigoAsync(item.CodAlumno, ct);
+            var isNew = existing is null || existing.AlumnoId == 0;
+            await UpsertFromCrmAsync(item, ct);
+            if (isNew) nuevas++;
+            else actualizadas++;
+        }
+
+        return (nuevas, actualizadas);
+    }
+
+    private async Task<Alumno> UpsertFromCrmAsync(CrmAlumnoDto item, CancellationToken ct)
+    {
+        var existing = await alumnos.GetByCrmCodigoAsync(item.CodAlumno, ct)
+            ?? (!string.IsNullOrWhiteSpace(item.Dni) ? await alumnos.GetByDniAsync(item.Dni, ct) : null)
+            ?? await alumnos.GetByCodigoAsync(item.CodAlumno, ct)
+            ?? new Alumno();
+
+        existing.CrmAlumnoCodigo = item.CodAlumno;
+        existing.CodigoAlumno = string.IsNullOrWhiteSpace(item.CodAlumno) ? item.Dni : item.CodAlumno;
+        existing.Dni = string.IsNullOrWhiteSpace(item.Dni) ? existing.Dni : item.Dni;
+        existing.Nombres = item.Nombres;
+        existing.Apellidos = item.Apellidos;
+        existing.Carrera = item.Carrera;
+        existing.Ciclo = item.Ciclo;
+        existing.Telefono = item.Telefono;
+        existing.Correo = item.Correo;
+        existing.EmailPersonal = item.EmailPersonal;
+        existing.Modalidad = item.Modalidad;
+        existing.FechaNacimiento = item.FechaNacimiento;
+        existing.Denominacion = item.Denominacion;
+        existing.UltimaSyncUtc = DateTime.UtcNow;
+
+        await alumnos.UpsertAsync(existing, ct);
+        return existing;
+    }
+
+    private async Task<DateTime?> ReadDateAsync(string key, CancellationToken ct)
+    {
+        var raw = await configuracion.GetValorAsync(key, ct);
+        return DateTime.TryParse(raw, null, System.Globalization.DateTimeStyles.RoundtripKind, out var dt)
+            ? DateTime.SpecifyKind(dt, DateTimeKind.Utc)
+            : null;
+    }
+
+    private static (DateTime Inicio, DateTime Fin) NormalizePeriod(DateTime inicio, DateTime fin)
+    {
+        var i = DateTime.SpecifyKind(inicio.ToUniversalTime(), DateTimeKind.Utc);
+        var f = DateTime.SpecifyKind(fin.ToUniversalTime(), DateTimeKind.Utc);
+        if (f < i)
+            throw new InvalidOperationException("La fecha fin no puede ser anterior a la fecha inicio.");
+        return (i, f);
+    }
+
     private static AlumnoDto Map(Alumno a) =>
-        new(a.AlumnoId, a.CodigoAlumno, a.Nombres, a.Apellidos, a.Carrera, a.Ciclo, a.Telefono, a.Correo);
+        new(
+            a.AlumnoId,
+            a.CodigoAlumno,
+            a.Nombres,
+            a.Apellidos,
+            a.Carrera,
+            a.Ciclo,
+            a.Telefono,
+            a.Correo,
+            a.CrmAlumnoCodigo,
+            a.Dni,
+            a.EmailPersonal,
+            a.Modalidad,
+            a.FechaNacimiento,
+            a.Denominacion,
+            a.UltimaSyncUtc);
 }
 
 public class ContratacionAppService(

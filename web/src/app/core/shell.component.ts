@@ -50,55 +50,41 @@ import { AdexLogoComponent } from './adex-logo.component';
           <span class="brand__divider" aria-hidden="true"></span>
 
           <nav class="topnav__links" aria-label="Principal">
-            @for (item of primaryNav(); track item.path) {
+            @for (item of allNav(); track item.path) {
               <a
                 class="topnav__link"
                 [routerLink]="item.path"
                 routerLinkActive="topnav__link--active"
                 [routerLinkActiveOptions]="{ exact: item.path === '/dashboard' }"
+                [title]="item.label"
               >
                 <mat-icon>{{ item.icon }}</mat-icon>
-                <span>{{ item.label }}</span>
+                <span class="topnav__label">{{ item.label }}</span>
               </a>
-            }
-            @if (moreNav().length) {
-              <button mat-button type="button" class="topnav__link topnav__more" [matMenuTriggerFor]="moreMenu">
-                <mat-icon>more_horiz</mat-icon>
-                <span>Más</span>
-                <mat-icon>arrow_drop_down</mat-icon>
-              </button>
-              <mat-menu #moreMenu="matMenu">
-                @for (item of moreNav(); track item.path) {
-                  <a mat-menu-item [routerLink]="item.path">
-                    <mat-icon>{{ item.icon }}</mat-icon>
-                    <span>{{ item.label }}</span>
-                  </a>
-                }
-              </mat-menu>
             }
           </nav>
 
-          <span class="spacer"></span>
-
-          <button mat-icon-button type="button" class="topnav__notify" aria-label="Notificaciones" matBadge="0" matBadgeSize="small" matBadgeColor="warn" [matBadgeHidden]="true">
-            <mat-icon>notifications</mat-icon>
-          </button>
-
-          <button mat-button type="button" class="user-chip" [matMenuTriggerFor]="userMenu">
-            <span class="user-chip__avatar" aria-hidden="true">{{ initials() }}</span>
-            <span class="user-chip__meta">
-              <strong>{{ auth.userName() || 'Usuario' }}</strong>
-              <small>{{ roleLabel() }}</small>
-            </span>
-            <mat-icon>arrow_drop_down</mat-icon>
-          </button>
-          <mat-menu #userMenu="matMenu">
-            <div class="user-menu-role" mat-menu-item disabled>{{ roleLabel() }}</div>
-            <button mat-menu-item type="button" (click)="auth.logout()">
-              <mat-icon>logout</mat-icon>
-              <span>Cerrar sesión</span>
+          <div class="topnav__actions">
+            <button mat-icon-button type="button" class="topnav__notify" aria-label="Notificaciones" matBadge="0" matBadgeSize="small" matBadgeColor="warn" [matBadgeHidden]="true">
+              <mat-icon>notifications</mat-icon>
             </button>
-          </mat-menu>
+
+            <button mat-button type="button" class="user-chip" [matMenuTriggerFor]="userMenu">
+              <span class="user-chip__avatar" aria-hidden="true">{{ initials() }}</span>
+              <span class="user-chip__meta">
+                <strong>{{ auth.userName() || 'Usuario' }}</strong>
+                <small>{{ roleLabel() }}</small>
+              </span>
+              <mat-icon class="user-chip__caret">arrow_drop_down</mat-icon>
+            </button>
+            <mat-menu #userMenu="matMenu">
+              <div class="user-menu-role" mat-menu-item disabled>{{ roleLabel() }}</div>
+              <button mat-menu-item type="button" (click)="auth.logout()">
+                <mat-icon>logout</mat-icon>
+                <span>Cerrar sesión</span>
+              </button>
+            </mat-menu>
+          </div>
         </div>
       </header>
 
@@ -156,6 +142,7 @@ import { AdexLogoComponent } from './adex-logo.component';
       box-shadow: 0 1px 3px rgb(0 59 112 / 18%);
     }
     .topnav__inner {
+      --gb-nav-item-height: 40px;
       display: flex;
       align-items: center;
       gap: var(--gb-space-2);
@@ -166,11 +153,12 @@ import { AdexLogoComponent } from './adex-logo.component';
     .brand {
       display: inline-flex;
       align-items: center;
+      height: var(--gb-nav-item-height);
       text-decoration: none;
       flex-shrink: 0;
     }
     .brand__logo {
-      width: 160px;
+      width: 150px;
     }
     .brand__divider {
       width: 1px;
@@ -183,15 +171,20 @@ import { AdexLogoComponent } from './adex-logo.component';
     .topnav__links {
       display: flex;
       align-items: center;
+      flex: 1 1 auto;
+      flex-wrap: nowrap;
       gap: 2px;
       min-width: 0;
-      overflow-x: auto;
+      overflow: hidden;
     }
     .topnav__link {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
-      padding: 8px 12px;
+      height: var(--gb-nav-item-height);
+      min-width: 0;
+      padding: 0 10px;
       border-radius: var(--gb-radius-sm);
       color: rgb(255 255 255 / 88%);
       text-decoration: none;
@@ -200,12 +193,15 @@ import { AdexLogoComponent } from './adex-logo.component';
       border: 0;
       background: transparent;
       cursor: pointer;
+      letter-spacing: 0;
     }
     .topnav__link mat-icon {
       font-size: 18px;
       width: 18px;
       height: 18px;
+      margin: 0;
       color: inherit;
+      flex-shrink: 0;
     }
     .topnav__link:hover { background: rgb(255 255 255 / 10%); color: var(--adex-white); }
     .topnav__link--active,
@@ -213,39 +209,66 @@ import { AdexLogoComponent } from './adex-logo.component';
       background: var(--adex-blue-active);
       color: var(--adex-white);
     }
-    .topnav__more {
-      --mdc-text-button-label-text-color: rgb(255 255 255 / 88%);
-      color: rgb(255 255 255 / 88%);
+    .topnav__actions {
+      display: flex;
+      align-items: center;
+      gap: var(--gb-space-1);
+      margin-left: auto;
+      flex-shrink: 0;
     }
-    .spacer { flex: 1; }
-    .topnav__notify { color: var(--adex-white); }
+    .topnav__notify {
+      color: var(--adex-white);
+      width: var(--gb-nav-item-height);
+      height: var(--gb-nav-item-height);
+      padding: 0;
+    }
     .user-chip {
+      --mdc-text-button-container-height: 48px;
       display: inline-flex;
       align-items: center;
       gap: var(--gb-space-2);
       color: var(--adex-white);
-      height: 44px;
-      padding: 0 8px 0 4px;
+      height: 48px;
+      min-width: 0;
+      padding: 0 var(--gb-space-2);
+      border-radius: 999px;
+      letter-spacing: 0;
     }
+    .user-chip:hover { background: rgb(255 255 255 / 10%); }
     .user-chip__avatar {
-      width: 36px;
-      height: 36px;
+      width: 34px;
+      height: 34px;
+      flex-shrink: 0;
       border-radius: 50%;
       background: rgb(255 255 255 / 18%);
       display: grid;
       place-items: center;
       font: var(--mat-sys-label-large);
       font-weight: 600;
+      line-height: 1;
     }
     .user-chip__meta {
       display: flex;
       flex-direction: column;
       align-items: flex-start;
-      line-height: 1.15;
+      justify-content: center;
+      gap: 1px;
+      min-width: 0;
+      max-width: 160px;
+      line-height: 1.2;
       text-align: left;
     }
-    .user-chip__meta strong { font: var(--mat-sys-label-large); font-weight: 600; }
-    .user-chip__meta small { font: var(--mat-sys-body-small); opacity: 0.8; }
+    .user-chip__meta strong,
+    .user-chip__meta small {
+      display: block;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .user-chip__meta strong { font: var(--mat-sys-label-large); font-weight: 600; letter-spacing: 0; }
+    .user-chip__meta small { font: var(--mat-sys-body-small); opacity: 0.8; letter-spacing: 0; }
+    .user-chip__caret { margin: 0; flex-shrink: 0; }
     .user-menu-role { opacity: 0.7; font: var(--mat-sys-label-medium); }
     .shell__body { flex: 1; }
     .mobile-drawer {
@@ -282,10 +305,22 @@ import { AdexLogoComponent } from './adex-logo.component';
       background: var(--adex-white);
     }
     .footer__version { white-space: nowrap; }
-    @media (max-width: 1100px) {
-      .topnav__link span:not(.mat-icon) { display: none; }
-      .topnav__link { padding: 8px; }
+    @media (max-width: 1600px) {
+      .brand__logo { width: 130px; }
+      .topnav__link { gap: 5px; padding: 0 8px; font-size: 13px; }
+    }
+    @media (max-width: 1400px) {
+      .brand__logo { width: 118px; }
+      .topnav__link { gap: 4px; padding: 0 6px; font-size: 12.5px; }
+      .topnav__link mat-icon { font-size: 17px; width: 17px; height: 17px; }
+    }
+    @media (max-width: 1280px) {
       .user-chip__meta { display: none; }
+      .user-chip { padding: 0 var(--gb-space-1); }
+    }
+    @media (max-width: 1180px) {
+      .topnav__label { display: none; }
+      .topnav__link { padding: 0 8px; }
     }
     @media (max-width: 768px) {
       .topnav__burger { display: inline-flex; }

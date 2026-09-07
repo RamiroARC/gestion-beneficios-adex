@@ -55,6 +55,14 @@
       }
     },
     {
+      "name": "Empresas Sync Estado",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/api/v1/empresas/sync/estado"
+      }
+    },
+    {
       "name": "Empresas Sync Catalog",
       "request": {
         "method": "POST",
@@ -98,6 +106,60 @@
         "method": "POST",
         "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
         "url": "{{baseUrl}}/api/v1/empresas/sync/20100070970"
+      }
+    },
+    {
+      "name": "Alumnos Sync Estado",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/api/v1/alumnos/sync/estado"
+      }
+    },
+    {
+      "name": "Alumnos Sync Preview",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"inicio\": \"2026-09-01T00:00:00.000Z\",\n  \"fin\": \"2026-09-03T23:59:59.000Z\"\n}"
+        },
+        "url": "{{baseUrl}}/api/v1/alumnos/sync/preview"
+      }
+    },
+    {
+      "name": "Alumnos Sync Procesar",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"inicio\": \"2026-09-01T00:00:00.000Z\",\n  \"fin\": \"2026-09-03T23:59:59.000Z\"\n}"
+        },
+        "url": "{{baseUrl}}/api/v1/alumnos/sync/procesar"
+      }
+    },
+    {
+      "name": "Alumnos Sync Catalog",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/api/v1/alumnos/sync"
+      }
+    },
+    {
+      "name": "Alumnos Sync Criterio",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/api/v1/alumnos/sync/75373356"
       }
     },
     {

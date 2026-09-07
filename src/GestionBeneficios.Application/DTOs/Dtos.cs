@@ -40,6 +40,7 @@ public record EmpresaSyncPreviewItemDto(
     DateTime ActualizadoUtc,
     bool YaExisteLocal,
     string? Correo = null,
+    string? Telefono = null,
     string? Promotor = null,
     DateTime? CrmCreatedOn = null);
 
@@ -56,9 +57,56 @@ public record EmpresaSyncResultDto(
     DateTime Inicio,
     DateTime Fin);
 
-public record AlumnoDto(int AlumnoId, string CodigoAlumno, string Nombres, string Apellidos, string? Carrera, string? Ciclo, string? Telefono, string? Correo);
+public record AlumnoDto(
+    int AlumnoId,
+    string CodigoAlumno,
+    string Nombres,
+    string Apellidos,
+    string? Carrera,
+    string? Ciclo,
+    string? Telefono,
+    string? Correo,
+    string? CrmAlumnoCodigo = null,
+    string? Dni = null,
+    string? EmailPersonal = null,
+    string? Modalidad = null,
+    DateTime? FechaNacimiento = null,
+    string? Denominacion = null,
+    DateTime? UltimaSyncUtc = null);
 public record CreateAlumnoRequest(string CodigoAlumno, string Nombres, string Apellidos, string? Carrera, string? Ciclo, string? Telefono, string? Correo);
 public record UpdateAlumnoRequest(string Nombres, string Apellidos, string? Carrera, string? Ciclo, string? Telefono, string? Correo);
+
+public record AlumnoSyncPreviewItemDto(
+    string CodAlumno,
+    string Dni,
+    string Nombres,
+    string Apellidos,
+    string? Carrera,
+    string? Ciclo,
+    bool YaExisteLocal,
+    DateTime ActualizadoUtc,
+    string? Correo = null,
+    string? Modalidad = null,
+    DateTime? CrmCreatedOn = null);
+
+public record AlumnoSyncPreviewDto(
+    IReadOnlyList<AlumnoSyncPreviewItemDto> Items,
+    int Total,
+    DateTime Inicio,
+    DateTime Fin);
+
+public record AlumnoSyncResultDto(
+    int Procesadas,
+    int Nuevas,
+    int Actualizadas,
+    DateTime Inicio,
+    DateTime Fin);
+
+public record AlumnoSyncEstadoDto(
+    DateTime? UltimoInicio,
+    DateTime? UltimoFin,
+    DateTime? SiguienteInicioSugerido,
+    int OffsetMinutos);
 
 public record ContratacionDto(
     int ContratacionId, int EmpresaId, string EmpresaRazonSocial, int AlumnoId, string AlumnoNombre,

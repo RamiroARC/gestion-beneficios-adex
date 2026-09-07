@@ -12,7 +12,8 @@
 ### Checklist pre-producción
 
 - [ ] Reemplazar Dev JWT por Login Centros Académico
-- [ ] Configurar `CrmEmpresas:CodUser` y `UseMock: false` en producción
+- [ ] Configurar CRM de Empresas en producción (`CodUser`, `UseMock: false`, `BaseUrl`, `PageSize`) — ver [CRM-EMPRESAS.md §5](CRM-EMPRESAS.md#5-configuración)
+- [ ] Configurar CRM de Alumnos (`CrmAlumnos:UseMock: false`; auth vía `CrmEmpresas:CodUser`) — ver [CRM-ALUMNOS.md §5](CRM-ALUMNOS.md#5-configuración)
 - [ ] Configurar SMTP / Graph para `IEmailSender`
 - [ ] Provider SQL Server + migraciones formales
 - [ ] CORS solo orígenes institucionales

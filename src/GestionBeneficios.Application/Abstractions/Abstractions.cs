@@ -20,9 +20,12 @@ public interface IAlumnoDao
 {
     Task<Alumno?> GetByIdAsync(int id, CancellationToken ct = default);
     Task<Alumno?> GetByCodigoAsync(string codigo, CancellationToken ct = default);
+    Task<Alumno?> GetByDniAsync(string dni, CancellationToken ct = default);
+    Task<Alumno?> GetByCrmCodigoAsync(string crmCodigo, CancellationToken ct = default);
     Task<(IReadOnlyList<Alumno> Items, int Total)> SearchAsync(string? q, int page, int pageSize, CancellationToken ct = default);
     Task AddAsync(Alumno alumno, CancellationToken ct = default);
     Task UpdateAsync(Alumno alumno, CancellationToken ct = default);
+    Task UpsertAsync(Alumno alumno, CancellationToken ct = default);
 }
 
 public interface IContratacionDao
@@ -123,6 +126,31 @@ public record CrmEmpresaDto(
     string? FechaAltaCrm = null)
 {
     public DateTime ActualizadoUtc => CrmCreatedOn;
+}
+
+public interface ICrmAlumnosClient
+{
+    Task<IReadOnlyList<CrmAlumnoDto>> SearchAsync(string? query, CancellationToken ct = default);
+    Task<IReadOnlyList<CrmAlumnoDto>> SearchByPeriodAsync(DateTime inicioUtc, DateTime finUtc, CancellationToken ct = default);
+    Task<CrmAlumnoDto?> GetByCriterioAsync(string criterio, CancellationToken ct = default);
+}
+
+public record CrmAlumnoDto(
+    string CodAlumno,
+    string Dni,
+    string Nombres,
+    string Apellidos,
+    string? Carrera,
+    string? Ciclo,
+    string? Telefono,
+    string? Correo,
+    string? EmailPersonal,
+    string? Modalidad,
+    DateTime? FechaNacimiento,
+    string? Denominacion,
+    DateTime CrmCreatedOn = default)
+{
+    public DateTime ActualizadoUtc => CrmCreatedOn == default ? DateTime.UtcNow : CrmCreatedOn;
 }
 
 public interface IEmailSender

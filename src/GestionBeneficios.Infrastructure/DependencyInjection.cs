@@ -96,13 +96,13 @@ public static class InfrastructureDependencyInjection
         services.AddScoped<IConfiguracionDao, ConfiguracionDao>();
 
         services.Configure<CrmEmpresasOptions>(config.GetSection(CrmEmpresasOptions.SectionName));
+        services.Configure<CrmAlumnosOptions>(config.GetSection(CrmAlumnosOptions.SectionName));
 
-        var crmOptions = config.GetSection(CrmEmpresasOptions.SectionName).Get<CrmEmpresasOptions>() ?? new CrmEmpresasOptions();
-        if (crmOptions.UseMock)
-        {
-            services.AddSingleton<ICrmEmpresasClient, MockCrmEmpresasClient>();
-        }
-        else
+        var crmEmpresasOptions = config.GetSection(CrmEmpresasOptions.SectionName).Get<CrmEmpresasOptions>() ?? new CrmEmpresasOptions();
+        var crmAlumnosOptions = config.GetSection(CrmAlumnosOptions.SectionName).Get<CrmAlumnosOptions>() ?? new CrmAlumnosOptions();
+        var needsCrmAuth = !crmEmpresasOptions.UseMock || !crmAlumnosOptions.UseMock;
+
+        if (needsCrmAuth)
         {
             services.AddSingleton<CrmEmpresasTokenProvider>();
             services.AddHttpClient(CrmEmpresasHttpClient.AuthHttpClientName, (sp, client) =>
@@ -111,11 +111,34 @@ public static class InfrastructureDependencyInjection
                 client.BaseAddress = new Uri(opts.BaseUrl.TrimEnd('/') + "/");
                 client.Timeout = TimeSpan.FromSeconds(Math.Clamp(opts.RequestTimeoutSeconds, 10, 300));
             });
+        }
 
+        if (crmEmpresasOptions.UseMock)
+        {
+            services.AddSingleton<ICrmEmpresasClient, MockCrmEmpresasClient>();
+        }
+        else
+        {
             services.AddHttpClient<ICrmEmpresasClient, CrmEmpresasHttpClient>((sp, client) =>
             {
                 var opts = sp.GetRequiredService<IOptions<CrmEmpresasOptions>>().Value;
                 client.BaseAddress = new Uri(opts.BaseUrl.TrimEnd('/') + "/");
+                client.Timeout = TimeSpan.FromSeconds(Math.Clamp(opts.RequestTimeoutSeconds, 10, 300));
+            });
+        }
+
+        if (crmAlumnosOptions.UseMock)
+        {
+            services.AddSingleton<ICrmAlumnosClient, MockCrmAlumnosClient>();
+        }
+        else
+        {
+            services.AddHttpClient<ICrmAlumnosClient, CrmAlumnosHttpClient>((sp, client) =>
+            {
+                var opts = sp.GetRequiredService<IOptions<CrmAlumnosOptions>>().Value;
+                var empresasOpts = sp.GetRequiredService<IOptions<CrmEmpresasOptions>>().Value;
+                var baseUrl = string.IsNullOrWhiteSpace(opts.BaseUrl) ? empresasOpts.BaseUrl : opts.BaseUrl;
+                client.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/");
                 client.Timeout = TimeSpan.FromSeconds(Math.Clamp(opts.RequestTimeoutSeconds, 10, 300));
             });
         }
@@ -135,6 +158,7 @@ public static class InfrastructureDependencyInjection
         var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Seed");
         await db.Database.EnsureCreatedAsync();
         await EmpresaSchemaPatcher.ApplyAsync(db, logger);
+        await AlumnoSchemaPatcher.ApplyAsync(db, logger);
 
         if (!await db.PlantillasCorreo.AnyAsync())
         {

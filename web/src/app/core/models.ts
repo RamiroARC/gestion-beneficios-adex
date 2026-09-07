@@ -41,6 +41,7 @@ export interface EmpresaSyncPreviewItem {
   actualizadoUtc: string;
   yaExisteLocal: boolean;
   correo?: string;
+  telefono?: string;
   promotor?: string;
   crmCreatedOn?: string;
 }
@@ -82,6 +83,49 @@ export interface Alumno {
   ciclo?: string;
   telefono?: string;
   correo?: string;
+  crmAlumnoCodigo?: string;
+  dni?: string;
+  emailPersonal?: string;
+  modalidad?: string;
+  fechaNacimiento?: string;
+  denominacion?: string;
+  ultimaSyncUtc?: string;
+}
+
+export interface AlumnoSyncEstado {
+  ultimoInicio?: string | null;
+  ultimoFin?: string | null;
+  siguienteInicioSugerido?: string | null;
+  offsetMinutos: number;
+}
+
+export interface AlumnoSyncPreviewItem {
+  codAlumno: string;
+  dni: string;
+  nombres: string;
+  apellidos: string;
+  carrera?: string;
+  ciclo?: string;
+  yaExisteLocal: boolean;
+  actualizadoUtc: string;
+  correo?: string;
+  modalidad?: string;
+  crmCreatedOn?: string;
+}
+
+export interface AlumnoSyncPreview {
+  items: AlumnoSyncPreviewItem[];
+  total: number;
+  inicio: string;
+  fin: string;
+}
+
+export interface AlumnoSyncResult {
+  procesadas: number;
+  nuevas: number;
+  actualizadas: number;
+  inicio: string;
+  fin: string;
 }
 
 export interface Contratacion {

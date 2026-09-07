@@ -62,6 +62,13 @@ public class AlumnosController(AlumnoAppService service) : ControllerBase
     public Task<PagedResult<AlumnoDto>> Search([FromQuery] string? q, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
         => service.SearchAsync(q, page, pageSize, ct);
 
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<AlumnoDto>> Get(int id, CancellationToken ct)
+    {
+        var item = await service.GetByIdAsync(id, ct);
+        return item is null ? NotFound() : item;
+    }
+
     [HttpPost]
     [Authorize(Roles = "Administrador,Operador")]
     public Task<AlumnoDto> Create([FromBody] CreateAlumnoRequest req, CancellationToken ct) => service.CreateAsync(req, ct);
@@ -69,6 +76,28 @@ public class AlumnosController(AlumnoAppService service) : ControllerBase
     [HttpPut("{id:int}")]
     [Authorize(Roles = "Administrador,Operador")]
     public Task<AlumnoDto> Update(int id, [FromBody] UpdateAlumnoRequest req, CancellationToken ct) => service.UpdateAsync(id, req, ct);
+
+    [HttpGet("sync/estado")]
+    [Authorize(Roles = "Administrador,Operador")]
+    public Task<AlumnoSyncEstadoDto> SyncEstado(CancellationToken ct) => service.GetSyncEstadoAsync(ct);
+
+    [HttpPost("sync/preview")]
+    [Authorize(Roles = "Administrador,Operador")]
+    public Task<AlumnoSyncPreviewDto> SyncPreview([FromBody] EmpresaSyncPeriodRequest req, CancellationToken ct)
+        => service.PreviewSyncAsync(req, ct);
+
+    [HttpPost("sync/procesar")]
+    [Authorize(Roles = "Administrador,Operador")]
+    public Task<AlumnoSyncResultDto> SyncProcesar([FromBody] EmpresaSyncPeriodRequest req, CancellationToken ct)
+        => service.ProcesarSyncAsync(req, ct);
+
+    [HttpPost("sync/{criterio}")]
+    [Authorize(Roles = "Administrador,Operador")]
+    public Task<AlumnoDto> Sync(string criterio, CancellationToken ct) => service.SyncFromCrmByCriterioAsync(criterio, ct);
+
+    [HttpPost("sync")]
+    [Authorize(Roles = "Administrador,Operador")]
+    public Task<AlumnoSyncResultDto> SyncAll(CancellationToken ct) => service.SyncCatalogAsync(ct);
 }
 
 [ApiController]

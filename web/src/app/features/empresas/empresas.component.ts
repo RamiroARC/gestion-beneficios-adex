@@ -152,6 +152,10 @@ import { EmpresaFormDialogComponent } from './empresa-form-dialog.component';
                     <th mat-header-cell *matHeaderCellDef>Categoría</th>
                     <td mat-cell *matCellDef="let e">{{ e.categoria }}</td>
                   </ng-container>
+                  <ng-container matColumnDef="telefono">
+                    <th mat-header-cell *matHeaderCellDef>Teléfono</th>
+                    <td mat-cell *matCellDef="let e">{{ e.telefono || '—' }}</td>
+                  </ng-container>
                   <ng-container matColumnDef="correo">
                     <th mat-header-cell *matHeaderCellDef>Correo</th>
                     <td mat-cell *matCellDef="let e">{{ e.correo || '—' }}</td>
@@ -217,6 +221,20 @@ import { EmpresaFormDialogComponent } from './empresa-form-dialog.component';
               <ng-container matColumnDef="categoria">
                 <th mat-header-cell *matHeaderCellDef>Categoría</th>
                 <td mat-cell *matCellDef="let e">{{ e.categoria }}</td>
+              </ng-container>
+              <ng-container matColumnDef="telefono">
+                <th mat-header-cell *matHeaderCellDef>Teléfono</th>
+                <td mat-cell *matCellDef="let e">{{ e.telefono || '—' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="correo">
+                <th mat-header-cell *matHeaderCellDef>Correo</th>
+                <td mat-cell *matCellDef="let e" class="col-correo" [matTooltip]="e.correo || ''">
+                  {{ e.correo || '—' }}
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="promotor">
+                <th mat-header-cell *matHeaderCellDef>Promotor</th>
+                <td mat-cell *matCellDef="let e">{{ e.promotor || '—' }}</td>
               </ng-container>
               <ng-container matColumnDef="activo">
                 <th mat-header-cell *matHeaderCellDef>Estado</th>
@@ -307,6 +325,12 @@ import { EmpresaFormDialogComponent } from './empresa-form-dialog.component';
       text-align: right;
       white-space: nowrap;
     }
+    .col-correo {
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   `
 })
 export class EmpresasComponent implements OnInit {
@@ -327,7 +351,7 @@ export class EmpresasComponent implements OnInit {
   total = signal(0);
   page = signal(1);
   pageSize = 20;
-  cols = ['ruc', 'razonSocial', 'categoria', 'activo', 'ver'];
+  cols = ['ruc', 'razonSocial', 'categoria', 'telefono', 'correo', 'promotor', 'activo', 'ver'];
 
   syncEstado = signal<EmpresaSyncEstado | null>(null);
   previewItems = signal<EmpresaSyncPreviewItem[]>([]);
@@ -335,7 +359,7 @@ export class EmpresasComponent implements OnInit {
   previewLoading = signal(false);
   processLoading = signal(false);
   catalogLoading = signal(false);
-  previewCols = ['ruc', 'razonSocial', 'categoria', 'correo', 'promotor', 'actualizado', 'estadoLocal'];
+  previewCols = ['ruc', 'razonSocial', 'categoria', 'telefono', 'correo', 'promotor', 'actualizado', 'estadoLocal'];
 
   canProcesar = computed(() => this.previewSeen() && !!this.syncInicio && !!this.syncFin);
 

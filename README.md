@@ -30,7 +30,7 @@ gestion-beneficios-adex/
 Ver [docs/FASE0-DECISIONES-STUB.md](docs/FASE0-DECISIONES-STUB.md):
 
 - Auth: JWT de desarrollo (`POST /api/v1/auth/dev-token`) hasta Login Centros
-- CRM: `MockCrmEmpresasClient` (dev) / `CrmEmpresasHttpClient` (prod, API ADEX)
+- CRM: `MockCrmEmpresasClient` / `CrmEmpresasHttpClient` (empresas); `MockCrmAlumnosClient` / `CrmAlumnosHttpClient` (alumnos)
 - Puntos: titular = empresa; meses enteros; canje inmediato
 
 ## Backend
@@ -88,6 +88,8 @@ Importar [postman/GestionBeneficios.postman_collection.json](postman/GestionBene
 | [docs/FASE0-DECISIONES-STUB.md](docs/FASE0-DECISIONES-STUB.md) | Stubs auth, CRM, puntos |
 | [docs/DESPLIEGUE-Y-CARD.md](docs/DESPLIEGUE-Y-CARD.md) | Despliegue institucional |
 | [docs/CARGA-MASIVA-EXCEL.md](docs/CARGA-MASIVA-EXCEL.md) | Formato Excel cargas |
+| [docs/CRM-EMPRESAS.md](docs/CRM-EMPRESAS.md) | Integración CRM de Empresas: API ADEX, sync, mapeo, config |
+| [docs/CRM-ALUMNOS.md](docs/CRM-ALUMNOS.md) | Integración CRM de Alumnos: sync on-demand por DNI/código |
 
 Regenerar el Word: `npm install docx --no-save && node tmp/generar-arquitectura-docx.mjs`
 
