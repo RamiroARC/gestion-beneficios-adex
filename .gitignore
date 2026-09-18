@@ -15,3 +15,11 @@ web/.angular/
 TestResults/
 **/appsettings.*.local.json
 tmp/
+
+# Secretos y configuración sensible por ambiente
+.env
+.env.*
+!.env.example
+# Overrides locales de PreProduction con credenciales reales (nunca versionar)
+**/appsettings.PreProduction.local.json
+publish/

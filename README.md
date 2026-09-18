@@ -23,7 +23,34 @@ gestion-beneficios-adex/
 
 - .NET SDK 10
 - Node.js ≥ 22.22 (o 24 LTS) para Angular 22
-- SQL Server 2022 (opcional en local; ver abajo)
+- SQLite (incluido, no requiere instalación) para desarrollo local
+- SQL Server 2022 **solo para PreProducción** (no necesario en local)
+
+## Ambientes
+
+La aplicación selecciona su configuración automáticamente según el ambiente en que se ejecuta. No se cambia código para pasar de un ambiente a otro, solo configuración.
+
+| Ambiente | Frontend | Backend | Base de datos | Hosting |
+|----------|----------|---------|---------------|---------|
+| **Development** (local) | `ng serve` :4200 | `dotnet run` :5280 | **SQLite** (`gestion-beneficios.db`) | Kiro / PC local |
+| **PreProduction** (servidor) | Angular compilado | ASP.NET Core 10 | **SQL Server 2022** | Windows Server + IIS |
+
+### Cómo se selecciona la base de datos
+
+El backend lee `Database:Provider` de la configuración del ambiente activo:
+
+- `ASPNETCORE_ENVIRONMENT=Development` → `appsettings.json` (Provider `Sqlite`) → **SQLite**
+- `ASPNETCORE_ENVIRONMENT=PreProduction` → `appsettings.PreProduction.json` (Provider `SqlServer`) → **SQL Server**
+
+La selección la hace `AddInfrastructure` (`UseSqlite` / `UseSqlServer`) sin tocar código.
+
+### Cómo Angular selecciona la URL de la API
+
+Vía `fileReplacements` en `angular.json`:
+
+- `ng serve` (development) → `environment.ts` → `http://localhost:5280/api/v1`
+- `npm run build` (production) → `environment.prod.ts` → `/api/v1` (rutas relativas)
+- `npm run build:preproduction` → `environment.preproduction.ts` → `/api/v1` (rutas relativas para IIS)
 
 ## Fase 0 (stubs)
 
@@ -33,10 +60,10 @@ Ver [docs/FASE0-DECISIONES-STUB.md](docs/FASE0-DECISIONES-STUB.md):
 - CRM: `MockCrmEmpresasClient` / `CrmEmpresasHttpClient` (empresas); `MockCrmAlumnosClient` / `CrmAlumnosHttpClient` (alumnos)
 - Puntos: titular = empresa; meses enteros; canje inmediato
 
-## Backend
+## Desarrollo local (Development → SQLite)
 
 ```powershell
-cd C:\Users\liton\Projects\gestion-beneficios-adex
+# Desde la raíz del repositorio
 dotnet restore
 dotnet build
 dotnet test
@@ -47,16 +74,49 @@ API: http://localhost:5280
 OpenAPI: http://localhost:5280/openapi/v1.json  
 Health: http://localhost:5280/api/health
 
-### SQL Server
+- La base de datos SQLite (`gestion-beneficios.db`) se crea automáticamente al iniciar la API (`EnsureCreatedAsync` + seed).
+- No se requiere instalar ni configurar nada adicional.
+- El perfil `launchSettings.json` ya fija `ASPNETCORE_ENVIRONMENT=Development`.
 
-Copiar/mergear `src/GestionBeneficios.Api/appsettings.SqlServer.json` o variables:
+### Verificar que la API funciona
 
-```json
-"ConnectionStrings": { "Beneficios": "Server=...;Database=GestionBeneficios;..." },
-"Database": { "Provider": "SqlServer" }
+```powershell
+# Health check
+curl http://localhost:5280/api/health
 ```
 
-Por defecto: SQLite `gestion-beneficios.db` en el directorio de ejecución.
+### Frontend local
+
+```powershell
+cd web
+npm install
+npm start          # ng serve → http://localhost:4200
+```
+
+El proxy (`web/proxy.conf.json`) redirige `/api` a `:5280`, y `environment.ts` apunta a `http://localhost:5280/api/v1`.
+
+## PreProducción (PreProduction → SQL Server 2022)
+
+Ver la guía completa en [docs/DESPLIEGUE-Y-CARD.md](docs/DESPLIEGUE-Y-CARD.md). Resumen:
+
+```powershell
+# 1. Compilar frontend para preproducción
+cd web
+npm run build:preproduction     # genera web/dist/gestion-beneficios-web
+
+# 2. Publicar backend
+dotnet publish src\GestionBeneficios.Api -c Release -o publish
+```
+
+En el servidor, la configuración sensible se inyecta por **variables de entorno** (nunca en el repo):
+
+```text
+ASPNETCORE_ENVIRONMENT = PreProduction
+ConnectionStrings__Beneficios = Server=...;Database=GestionBeneficios;User Id=...;Password=...;TrustServerCertificate=True;Encrypt=True
+Authentication__DevJwt__Key   = <clave-segura-de-preproduccion>
+```
+
+> `appsettings.SqlServer.json` se conserva como referencia histórica del formato de connection string. El ambiente real es `appsettings.PreProduction.json` (con placeholders) + variables de entorno.
 
 ## Frontend
 

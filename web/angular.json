@@ -48,7 +48,34 @@
                   "maximumError": "16kB"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
+                }
+              ]
+            },
+            "preproduction": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "800kB",
+                  "maximumError": "1MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "8kB",
+                  "maximumError": "16kB"
+                }
+              ],
+              "outputHashing": "all",
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.preproduction.ts"
+                }
+              ]
             },
             "development": {
               "optimization": false,
@@ -66,6 +93,9 @@
           "configurations": {
             "production": {
               "buildTarget": "gestion-beneficios-web:build:production"
+            },
+            "preproduction": {
+              "buildTarget": "gestion-beneficios-web:build:preproduction"
             },
             "development": {
               "buildTarget": "gestion-beneficios-web:build:development"
