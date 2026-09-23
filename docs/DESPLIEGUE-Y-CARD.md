@@ -154,3 +154,83 @@ Consideraciones:
   de puntos/sueldo y **case sensitivity / collation** en búsquedas de texto.
 - Para añadir cambios de esquema futuros: crear nueva migración y regenerar el script idempotente
   (ver [`database/README.md`](../database/README.md)).
+
+---
+
+## Checklist operativo de despliegue a PreProducción
+
+Procedimiento paso a paso. Los pasos 1–2 se ejecutan en la máquina de build; los pasos 3+ en el
+servidor Windows.
+
+### Datos del ambiente
+
+| Elemento | Valor |
+|----------|-------|
+| Servidor SQL | `10.31.1.220` |
+| Base de datos | `BD_SISTEMA_GESTION_BENEFICIOS_EMPRESAS` |
+| Ambiente | `PreProduction` |
+| Frontend build | `web/dist/gestion-beneficios-web/browser` |
+| Backend publish | `publish/` |
+
+### 1. Generar artefactos (máquina de build)
+
+```powershell
+# Frontend
+cd web
+npm ci
+npm run build:preproduction        # → web/dist/gestion-beneficios-web/browser
+
+# Backend
+cd ..
+dotnet publish src\GestionBeneficios.Api -c Release -o publish   # → publish/
+```
+
+### 2. Copiar artefactos al servidor
+
+- Copiar el contenido de `publish/` a la carpeta del sitio en IIS (ej. `C:\inetpub\sites\gestion-beneficios`).
+- Copiar el contenido de `web/dist/gestion-beneficios-web/browser` dentro de una carpeta
+  `wwwroot` del sitio (o servirlo desde el mismo sitio) para que las rutas relativas `/api/v1`
+  resuelvan contra la API.
+
+### 3. Configurar el sitio en IIS
+
+- Instalar el **ASP.NET Core Hosting Bundle** .NET 10 (si no está).
+- Crear Application Pool: **No Managed Code**, pipeline Integrated.
+- Crear el sitio apuntando a la carpeta de `publish/`, binding HTTPS (443) con certificado.
+
+### 4. Definir variables de entorno (Application Pool o sistema)
+
+```text
+ASPNETCORE_ENVIRONMENT        = PreProduction
+ConnectionStrings__Beneficios = Server=10.31.1.220;Database=BD_SISTEMA_GESTION_BENEFICIOS_EMPRESAS;User Id=<usuario>;Password=<clave>;TrustServerCertificate=True;Encrypt=True
+Authentication__DevJwt__Key   = <clave-segura-de-preproduccion>
+```
+
+> Nunca versionar estos valores. Se configuran solo en el servidor.
+
+### 5. Base de datos
+
+- La cuenta SQL debe tener permiso para **crear tablas** en la base.
+- El esquema se crea automáticamente al primer arranque (`MigrateAsync`), o aplicando
+  `database/preprod-schema.sql` con SSMS previamente.
+
+### 6. Arrancar y verificar
+
+- Iniciar el sitio en IIS (o hacer el primer request).
+- Verificar health: `https://<servidor>/api/health`.
+- Revisar logs de arranque. El fix de tolerancia CRM asegura que, aunque la sincronización
+  inicial del CRM falle, la API arranca igual (queda un warning en el log).
+
+### 7. Post-despliegue
+
+- Si el sync CRM inicial falló, reintentarlo cuando el CRM esté disponible:
+  `POST /api/v1/empresas/sync` (o esperar al job en background).
+- Para diagnóstico, activar temporalmente en `web.config`: `stdoutLogEnabled="true"`
+  (recordar desactivarlo después).
+
+### Notas
+
+- **SPA fallback**: para que las rutas del router de Angular no devuelvan 404 al refrescar,
+  configurar en IIS que las rutas no encontradas caigan a `index.html` (módulo URL Rewrite).
+- **`web.config`** se regenera en cada `dotnet publish`; cualquier ajuste manual (como
+  `stdoutLogEnabled`) se hace en el servidor tras copiar.
