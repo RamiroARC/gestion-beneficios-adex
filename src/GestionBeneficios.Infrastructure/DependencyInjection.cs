@@ -156,7 +156,25 @@ public static class InfrastructureDependencyInjection
         using var scope = sp.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<BeneficiosDbContext>();
         var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Seed");
-        await db.Database.EnsureCreatedAsync();
+
+        // Estrategia de esquema por proveedor:
+        //  - SQL Server (PreProduction): aplica migraciones EF Core versionadas (MigrateAsync).
+        //    Las migraciones viven en Migrations/ y están generadas con dialecto SQL Server.
+        //  - SQLite (Development): usa EnsureCreatedAsync, que crea el esquema directo del modelo
+        //    sin depender de migraciones (que son específicas de SQL Server).
+        var isSqlServer = db.Database.IsSqlServer();
+        if (isSqlServer)
+        {
+            await db.Database.MigrateAsync();
+        }
+        else
+        {
+            await db.Database.EnsureCreatedAsync();
+        }
+
+        // Los schema patchers permanecen como red de seguridad idempotente para bases
+        // preexistentes. Sobre una BD recién creada (por migración o EnsureCreated) no tienen
+        // efecto, ya que las columnas ya existen.
         await EmpresaSchemaPatcher.ApplyAsync(db, logger);
         await AlumnoSchemaPatcher.ApplyAsync(db, logger);
 

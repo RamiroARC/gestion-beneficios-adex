@@ -44,6 +44,20 @@ El backend lee `Database:Provider` de la configuración del ambiente activo:
 
 La selección la hace `AddInfrastructure` (`UseSqlite` / `UseSqlServer`) sin tocar código.
 
+### Cómo se crea el esquema de la base de datos
+
+Estrategia por proveedor, resuelta automáticamente en `SeedAsync` al arrancar la API:
+
+| Ambiente | Proveedor | Mecanismo |
+|----------|-----------|-----------|
+| Development | SQLite | `EnsureCreatedAsync()` — crea el esquema directo del modelo |
+| PreProduction | SQL Server | `MigrateAsync()` — aplica migraciones EF Core versionadas |
+
+Las migraciones (`src/GestionBeneficios.Infrastructure/Migrations/`) están generadas con
+dialecto **SQL Server** y son exclusivas de ese motor. SQLite no las usa. Para preparar la BD
+de preproducción, ver [database/README.md](database/README.md) y el script idempotente
+[database/preprod-schema.sql](database/preprod-schema.sql).
+
 ### Cómo Angular selecciona la URL de la API
 
 Vía `fileReplacements` en `angular.json`:
@@ -108,11 +122,16 @@ npm run build:preproduction     # genera web/dist/gestion-beneficios-web
 dotnet publish src\GestionBeneficios.Api -c Release -o publish
 ```
 
+**Esquema de base de datos** (SQL Server): aplicar el script idempotente
+[database/preprod-schema.sql](database/preprod-schema.sql) sobre
+`BD_SISTEMA_GESTION_BENEFICIOS_EMPRESAS` con SSMS, o dejar que la API lo aplique al arrancar
+vía `MigrateAsync()`. Detalles en [database/README.md](database/README.md).
+
 En el servidor, la configuración sensible se inyecta por **variables de entorno** (nunca en el repo):
 
 ```text
 ASPNETCORE_ENVIRONMENT = PreProduction
-ConnectionStrings__Beneficios = Server=...;Database=GestionBeneficios;User Id=...;Password=...;TrustServerCertificate=True;Encrypt=True
+ConnectionStrings__Beneficios = Server=10.31.1.220;Database=BD_SISTEMA_GESTION_BENEFICIOS_EMPRESAS;User Id=...;Password=...;TrustServerCertificate=True;Encrypt=True
 Authentication__DevJwt__Key   = <clave-segura-de-preproduccion>
 ```
 

@@ -136,8 +136,21 @@ dotnet publish src\GestionBeneficios.Api -c Release -o publish
 
 ## Base de datos en PreProducción
 
-Con la estrategia actual (Opción A: `EnsureCreatedAsync` + schema patchers), al primer arranque contra un SQL Server vacío la API crea el esquema automáticamente. Consideraciones:
+El esquema se administra con **migraciones EF Core** (dialecto SQL Server). Hay dos formas
+equivalentes de aplicarlo a `BD_SISTEMA_GESTION_BENEFICIOS_EMPRESAS`:
 
-- La cuenta SQL del connection string necesita permisos para **crear tablas** en la base `GestionBeneficios` (o crearlas previamente).
-- Puntos a verificar en SQL Server (difieren de SQLite): **precisión decimal (18,2)** en cálculos de puntos/sueldo y **case sensitivity / collation** en búsquedas de texto.
-- Migraciones formales de EF Core quedan como mejora futura (no incluidas en esta preparación).
+1. **Script SQL idempotente (recomendado para el DBA)**: ejecutar
+   [`database/preprod-schema.sql`](../database/preprod-schema.sql) con SSMS. Se puede correr
+   varias veces sin error. Revisable antes de aplicar.
+2. **Automático al arrancar**: la API ejecuta `MigrateAsync()` en `SeedAsync` cuando el proveedor
+   es SQL Server, creando/actualizando el esquema al iniciar.
+
+Consideraciones:
+
+- La cuenta SQL necesita permiso para **crear tablas** en la base (o aplicar el script previamente).
+- La estrategia es **por proveedor**: SQL Server usa migraciones (`MigrateAsync`), SQLite en
+  desarrollo usa `EnsureCreatedAsync`. Las migraciones son exclusivas de SQL Server.
+- Puntos a verificar en SQL Server (difieren de SQLite): **precisión decimal (18,2)** en cálculos
+  de puntos/sueldo y **case sensitivity / collation** en búsquedas de texto.
+- Para añadir cambios de esquema futuros: crear nueva migración y regenerar el script idempotente
+  (ver [`database/README.md`](../database/README.md)).
