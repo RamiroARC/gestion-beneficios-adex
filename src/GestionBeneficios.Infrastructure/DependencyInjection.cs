@@ -224,7 +224,23 @@ public static class InfrastructureDependencyInjection
 
         await db.SaveChangesAsync();
 
+        // Sincronización inicial del catálogo de empresas desde el CRM.
+        // Es tolerante a fallos: en PreProduction el CRM real puede no estar disponible
+        // o sin credenciales al primer arranque. El esquema y el seed ya quedaron creados
+        // arriba, así que un fallo aquí NO debe impedir que la aplicación levante.
+        // La sincronización puede reintentarse luego vía POST /api/v1/empresas/sync
+        // o por el job en background.
         var empresas = scope.ServiceProvider.GetRequiredService<EmpresaAppService>();
-        await empresas.SyncCatalogAsync();
+        try
+        {
+            await empresas.SyncCatalogAsync();
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "La sincronización inicial del catálogo CRM falló durante el arranque. " +
+                "La aplicación continúa con el esquema y el seed ya aplicados; " +
+                "reintentar la sincronización manualmente cuando el CRM esté disponible.");
+        }
     }
 }
