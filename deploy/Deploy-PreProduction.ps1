@@ -46,7 +46,16 @@ param(
     [string] $SiteName = "GestionBeneficios",
     [string] $AppPoolName = "GestionBeneficiosPool",
 
-    # Binding HTTPS. Indicar el thumbprint de un certificado ya instalado en el servidor.
+    # Modo HTTP: crea el sitio con binding HTTP en un puerto dedicado y OMITE toda la
+    # configuracion de HTTPS/certificado. Usar en servidores donde el TLS lo resuelve un
+    # proxy/balanceador de borde y cada app expone un puerto HTTP propio.
+    [switch] $UseHttp,
+
+    # Puerto HTTP cuando se usa -UseHttp.
+    [int]    $HttpPort = 9020,
+
+    # Binding HTTPS (solo cuando NO se usa -UseHttp). Indicar el thumbprint de un
+    # certificado ya instalado en el servidor.
     [int]    $HttpsPort = 443,
     [string] $HostHeader = "",
     [string] $CertificateThumbprint = "",
@@ -62,11 +71,17 @@ param(
     # Ambiente ASP.NET Core.
     [string] $AspNetCoreEnvironment = "PreProduction",
 
-    # URL base para la verificacion de salud tras el arranque.
-    [string] $HealthUrl = "https://localhost/api/health"
+    # URL base para la verificacion de salud tras el arranque. Si se deja vacio, se calcula
+    # segun el modo: http://localhost:<HttpPort>/api/health  o  https://localhost/api/health.
+    [string] $HealthUrl = ""
 )
 
 $ErrorActionPreference = "Stop"
+
+# Resolver la URL de health segun el modo si no se indico explicitamente.
+if (-not $HealthUrl) {
+    $HealthUrl = if ($UseHttp) { "http://localhost:$HttpPort/api/health" } else { "https://localhost/api/health" }
+}
 
 function Write-Step($msg) { Write-Host "`n=== $msg ===" -ForegroundColor Cyan }
 function Write-Ok($msg)   { Write-Host "  [OK] $msg" -ForegroundColor Green }
@@ -158,33 +173,59 @@ if ($PSCmdlet.ShouldProcess($AppPoolName, "Crear/configurar Application Pool")) 
 }
 
 # ---------------------------------------------------------------------------
-# 3. Sitio IIS + binding HTTPS
+# 3. Sitio IIS + binding (HTTP en puerto dedicado, o HTTPS con certificado)
 # ---------------------------------------------------------------------------
 Write-Step "Configurando sitio IIS: $SiteName"
 
 if ($PSCmdlet.ShouldProcess($SiteName, "Crear/configurar sitio IIS")) {
-    if (-not (Test-Path "IIS:\Sites\$SiteName")) {
-        New-Website -Name $SiteName -PhysicalPath $SitePath -ApplicationPool $AppPoolName -Port 80 -Force | Out-Null
-        Write-Ok "Sitio creado (HTTP:80 temporal)"
-    } else {
-        Write-Warn "El sitio ya existe; se reutiliza"
-        Set-ItemProperty "IIS:\Sites\$SiteName" -Name physicalPath      -Value $SitePath
-        Set-ItemProperty "IIS:\Sites\$SiteName" -Name applicationPool   -Value $AppPoolName
-    }
-
-    # Binding HTTPS si se proporciono certificado
-    if ($CertificateThumbprint) {
-        $existingHttps = Get-WebBinding -Name $SiteName -Protocol "https" -ErrorAction SilentlyContinue
-        if (-not $existingHttps) {
-            New-WebBinding -Name $SiteName -Protocol "https" -Port $HttpsPort -HostHeader $HostHeader
-            Write-Ok "Binding HTTPS agregado en puerto $HttpsPort"
+    if ($UseHttp) {
+        # --- Modo HTTP: sitio en un puerto dedicado, sin certificado ---
+        if (-not (Test-Path "IIS:\Sites\$SiteName")) {
+            New-Website -Name $SiteName -PhysicalPath $SitePath -ApplicationPool $AppPoolName `
+                -Port $HttpPort -HostHeader $HostHeader -Force | Out-Null
+            Write-Ok "Sitio creado (HTTP:$HttpPort)"
+        } else {
+            Write-Warn "El sitio ya existe; se reutiliza"
+            Set-ItemProperty "IIS:\Sites\$SiteName" -Name physicalPath    -Value $SitePath
+            Set-ItemProperty "IIS:\Sites\$SiteName" -Name applicationPool -Value $AppPoolName
+            # Asegurar el binding HTTP en el puerto pedido
+            $httpBind = Get-WebBinding -Name $SiteName -Protocol "http" -Port $HttpPort -ErrorAction SilentlyContinue
+            if (-not $httpBind) {
+                New-WebBinding -Name $SiteName -Protocol "http" -Port $HttpPort -HostHeader $HostHeader
+                Write-Ok "Binding HTTP agregado en puerto $HttpPort"
+            }
         }
-        # Asociar el certificado al binding
-        $binding = Get-WebBinding -Name $SiteName -Protocol "https"
-        $binding.AddSslCertificate($CertificateThumbprint, "My")
-        Write-Ok "Certificado asociado al binding HTTPS"
-    } else {
-        Write-Warn "Sin CertificateThumbprint: no se configuro HTTPS. Configurar el binding 443 manualmente."
+        # Quitar el binding por defecto en 80 si quedo (evita chocar con el Default Web Site)
+        $bind80 = Get-WebBinding -Name $SiteName -Protocol "http" -Port 80 -ErrorAction SilentlyContinue
+        if ($bind80) {
+            Remove-WebBinding -Name $SiteName -Protocol "http" -Port 80 -ErrorAction SilentlyContinue
+            Write-Ok "Binding temporal HTTP:80 removido"
+        }
+        Write-Ok "Sitio configurado en HTTP puerto $HttpPort (TLS lo resuelve el proxy de borde, si aplica)"
+    }
+    else {
+        # --- Modo HTTPS (443 + certificado) ---
+        if (-not (Test-Path "IIS:\Sites\$SiteName")) {
+            New-Website -Name $SiteName -PhysicalPath $SitePath -ApplicationPool $AppPoolName -Port 80 -Force | Out-Null
+            Write-Ok "Sitio creado (HTTP:80 temporal)"
+        } else {
+            Write-Warn "El sitio ya existe; se reutiliza"
+            Set-ItemProperty "IIS:\Sites\$SiteName" -Name physicalPath      -Value $SitePath
+            Set-ItemProperty "IIS:\Sites\$SiteName" -Name applicationPool   -Value $AppPoolName
+        }
+
+        if ($CertificateThumbprint) {
+            $existingHttps = Get-WebBinding -Name $SiteName -Protocol "https" -ErrorAction SilentlyContinue
+            if (-not $existingHttps) {
+                New-WebBinding -Name $SiteName -Protocol "https" -Port $HttpsPort -HostHeader $HostHeader
+                Write-Ok "Binding HTTPS agregado en puerto $HttpsPort"
+            }
+            $binding = Get-WebBinding -Name $SiteName -Protocol "https"
+            $binding.AddSslCertificate($CertificateThumbprint, "My")
+            Write-Ok "Certificado asociado al binding HTTPS"
+        } else {
+            Write-Warn "Sin CertificateThumbprint: no se configuro HTTPS. Configurar el binding 443 manualmente."
+        }
     }
 }
 
@@ -238,7 +279,13 @@ if ($PSCmdlet.ShouldProcess($SiteName, "Iniciar App Pool y sitio")) {
     Write-Step "Verificando health endpoint"
     Start-Sleep -Seconds 8   # dar tiempo al primer arranque (MigrateAsync + seed)
     try {
-        $resp = Invoke-WebRequest -Uri $HealthUrl -UseBasicParsing -TimeoutSec 30 -SkipCertificateCheck
+        # -SkipCertificateCheck solo existe en PowerShell 7+ y solo aplica a HTTPS.
+        # En Windows PowerShell 5.1 (o para URLs HTTP) no se usa.
+        $iwrArgs = @{ Uri = $HealthUrl; UseBasicParsing = $true; TimeoutSec = 30 }
+        if ($PSVersionTable.PSVersion.Major -ge 6 -and $HealthUrl -like "https:*") {
+            $iwrArgs["SkipCertificateCheck"] = $true
+        }
+        $resp = Invoke-WebRequest @iwrArgs
         Write-Ok "Health respondio: HTTP $($resp.StatusCode)"
     } catch {
         Write-Warn "No se pudo verificar el health en $HealthUrl : $($_.Exception.Message)"

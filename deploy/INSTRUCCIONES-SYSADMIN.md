@@ -42,14 +42,37 @@ de SQL Server y la **clave JWT**.
 
 | Elemento | Valor |
 |----------|-------|
+| Servidor web (IIS) | `10.31.1.222` |
+| Puerto HTTP de la app | `9020` |
 | Servidor SQL | `10.31.1.220` |
 | Base de datos | `BD_SISTEMA_GESTION_BENEFICIOS_EMPRESAS` |
 | Ambiente | `PreProduction` |
 | Autenticación SQL | Usuario/contraseña SQL |
 
+> **Nota de este servidor**: aquí cada aplicación se publica en **HTTP con un puerto dedicado**
+> (no HTTPS por sitio). El TLS lo resuelve el proxy/balanceador de borde de la institución. Por
+> eso el despliegue se hace con `-UseHttp -HttpPort 9020` y **no** requiere certificado en IIS.
+> La URL interna de la app será `http://10.31.1.222:9020/`.
+
 ---
 
 ## Procedimiento
+
+### 0. Verificar prerrequisitos (solo lectura, recomendado)
+
+Antes de desplegar, correr el verificador. **No modifica nada**: solo comprueba admin, IIS,
+Hosting Bundle, certificado, conectividad al SQL y los artefactos del paquete, e indica si
+corresponde un primer despliegue o una actualización.
+
+```powershell
+.\Check-Prerequisites.ps1 `
+    -PublishSource ".\publish" `
+    -FrontendSource ".\frontend" `
+    -SqlHost "10.31.1.220"
+```
+
+Resolver cualquier `[FAIL]` antes de continuar. Las `[!]` son advertencias. En este servidor
+NO se usa certificado (modo HTTP), así que la advertencia de thumbprint es esperada.
 
 ### 1. Revisar en modo simulación (recomendado)
 
@@ -59,9 +82,9 @@ En PowerShell **como Administrador**, en la carpeta del paquete:
 .\Deploy-PreProduction.ps1 `
     -PublishSource ".\publish" `
     -FrontendSource ".\frontend" `
+    -UseHttp -HttpPort 9020 `
     -ConnectionString "Server=10.31.1.220;Database=BD_SISTEMA_GESTION_BENEFICIOS_EMPRESAS;User Id=<usuario>;Password=<clave>;TrustServerCertificate=True;Encrypt=True" `
     -JwtKey "<clave-jwt-segura>" `
-    -CertificateThumbprint "<thumbprint-del-certificado>" `
     -WhatIf
 ```
 
@@ -74,7 +97,7 @@ Quitar `-WhatIf` y ejecutar el mismo comando. El script:
 1. Valida prerrequisitos (admin, IIS, Hosting Bundle).
 2. Copia `publish\` al sitio (`C:\inetpub\sites\gestion-beneficios`) y `frontend\` a `wwwroot`.
 3. Crea el Application Pool `GestionBeneficiosPool` (No Managed Code, Integrated).
-4. Crea el sitio `GestionBeneficios` con binding HTTPS.
+4. Crea el sitio `GestionBeneficios` con binding **HTTP en el puerto 9020** (sin certificado).
 5. Define las variables de entorno (ambiente + secretos) en el Application Pool.
 6. Otorga permisos de escritura sobre `logs` a la identidad del App Pool.
 7. Arranca el sitio y verifica el health endpoint.
@@ -82,11 +105,41 @@ Quitar `-WhatIf` y ejecutar el mismo comando. El script:
 ### 3. Verificar
 
 ```powershell
-Invoke-WebRequest -Uri "https://localhost/api/health" -UseBasicParsing -SkipCertificateCheck
+Invoke-WebRequest -Uri "http://localhost:9020/api/health" -UseBasicParsing
 ```
 
 Debe responder **HTTP 200**. La base de datos se crea automáticamente al primer arranque
-(la API ejecuta las migraciones EF Core sobre SQL Server).
+(la API ejecuta las migraciones EF Core sobre SQL Server). El SPA responde en
+`http://10.31.1.222:9020/`.
+
+---
+
+## Actualizaciones posteriores (nuevas versiones de código)
+
+Para publicar una nueva versión **cuando el sitio ya existe**, NO se usa
+`Deploy-PreProduction.ps1` (ese es solo para el primer despliegue). Se usa
+`Update-PreProduction.ps1`, que reemplaza los artefactos sin tocar la configuración de IIS ni
+los secretos ya guardados.
+
+```powershell
+# Con el nuevo paquete copiado al servidor, en PowerShell como Administrador:
+.\Update-PreProduction.ps1 -PublishSource ".\publish" -FrontendSource ".\frontend" -WhatIf   # simular
+.\Update-PreProduction.ps1 -PublishSource ".\publish" -FrontendSource ".\frontend"           # aplicar
+```
+
+El script de actualización:
+
+1. Detiene el sitio y el Application Pool.
+2. **Respalda** la versión actual en `C:\deploy\backups\` (para poder revertir).
+3. Reemplaza el backend y el frontend con los nuevos artefactos (preserva `wwwroot`/`logs` según corresponda).
+4. Reinicia el sitio y verifica el health endpoint.
+
+**Cambios de esquema**: si la nueva versión incluye una migración EF Core nueva, la API la
+aplica automáticamente al arrancar (`MigrateAsync`). No requiere acción manual. Si se prefiere
+aplicarla antes con SSMS, regenerar y ejecutar `database\preprod-schema.sql` (es idempotente).
+
+**Revertir**: si una actualización falla, restaurar copiando el respaldo más reciente de
+`C:\deploy\backups\` sobre la carpeta del sitio y reiniciar.
 
 ---
 
@@ -107,9 +160,10 @@ Alternativa (si se prefiere aplicarlo manualmente antes): ejecutar el script ide
   repositorio ni en el paquete. Considerar `Clear-History` tras ejecutar para no dejar los
   secretos en el historial de PowerShell.
 
-- **SPA fallback**: para que las rutas del router de Angular no devuelvan 404 al refrescar,
-  configurar **URL Rewrite** en IIS de modo que las rutas no encontradas caigan a `index.html`.
-  (Requiere el módulo URL Rewrite de IIS.)
+- **SPA fallback**: lo gestiona la propia API (sirve los archivos de `wwwroot` y hace fallback
+  a `index.html` para las rutas del router de Angular). **No requiere** el módulo URL Rewrite de
+  IIS. Solo asegurar que el frontend quede en la carpeta `wwwroot` del sitio (los scripts de
+  despliegue lo copian ahí automáticamente). Las rutas `/api/...` inexistentes devuelven 404.
 
 - **Sincronización CRM al arranque**: si el CRM real no está disponible en el primer arranque,
   la aplicación **arranca igual** (queda un warning en los logs). La sincronización puede

@@ -23,3 +23,6 @@ tmp/
 # Overrides locales de PreProduction con credenciales reales (nunca versionar)
 **/appsettings.PreProduction.local.json
 publish/
+
+# Paquete de despliegue generado por deploy/Package-Deploy.ps1 (artefactos compilados)
+deploy-package/

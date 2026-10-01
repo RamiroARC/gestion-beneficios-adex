@@ -84,10 +84,12 @@ Write-Ok "Backend copiado al paquete"
 Copy-Item -Path (Join-Path $frontendSource "*") -Destination $pkgFrontend -Recurse -Force
 Write-Ok "Frontend copiado al paquete"
 
-# Script de despliegue e instrucciones para el sysadmin
+# Scripts de despliegue/actualizacion/verificacion e instrucciones para el sysadmin
+Copy-Item -Path (Join-Path $repoRoot "deploy\Check-Prerequisites.ps1")   -Destination $OutputDir -Force -ErrorAction SilentlyContinue
 Copy-Item -Path (Join-Path $repoRoot "deploy\Deploy-PreProduction.ps1")  -Destination $OutputDir -Force
+Copy-Item -Path (Join-Path $repoRoot "deploy\Update-PreProduction.ps1")  -Destination $OutputDir -Force -ErrorAction SilentlyContinue
 Copy-Item -Path (Join-Path $repoRoot "deploy\INSTRUCCIONES-SYSADMIN.md") -Destination $OutputDir -Force -ErrorAction SilentlyContinue
-Write-Ok "Script e instrucciones copiados"
+Write-Ok "Scripts (check + deploy + update) e instrucciones copiados"
 
 # ---------------------------------------------------------------------------
 # 4. Resumen
@@ -97,7 +99,9 @@ Write-Host @"
 Contenido de '$OutputDir':
   publish\                      -> backend .NET publicado (copiar a C:\deploy\publish en el servidor)
   frontend\                     -> Angular compilado      (copiar a C:\deploy\frontend en el servidor)
-  Deploy-PreProduction.ps1      -> script que ejecuta el ADMINISTRADOR en el servidor
+  Check-Prerequisites.ps1       -> VERIFICACION previa (admin, solo lectura): valida el servidor
+  Deploy-PreProduction.ps1      -> PRIMER despliegue (admin): configura IIS completo
+  Update-PreProduction.ps1      -> ACTUALIZACIONES (admin): reemplaza artefactos sin tocar IIS
   INSTRUCCIONES-SYSADMIN.md     -> guia para el administrador
 
 Siguiente paso:
