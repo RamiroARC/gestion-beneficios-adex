@@ -2,6 +2,7 @@ using GestionBeneficios.Application.Abstractions;
 using GestionBeneficios.Application.Services;
 using GestionBeneficios.Domain.Entities;
 using GestionBeneficios.Infrastructure.Crm;
+using GestionBeneficios.Infrastructure.Email;
 using GestionBeneficios.Infrastructure.Persistence;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Http;
@@ -51,6 +52,9 @@ public class VencimientoBackgroundService(IServiceProvider sp, ILogger<Vencimien
                 var puntos = scope.ServiceProvider.GetRequiredService<PuntosAppService>();
                 var n = await puntos.ProcesarVencimientosAsync(stoppingToken);
                 if (n > 0) logger.LogInformation("Vencimientos procesados: {Count}", n);
+
+                var avisos = await puntos.ProcesarPorVencerAsync(stoppingToken);
+                if (avisos > 0) logger.LogInformation("Avisos de puntos por vencer encolados: {Count}", avisos);
 
                 var correos = scope.ServiceProvider.GetRequiredService<ComunicacionAppService>();
                 await correos.ProcesarColaAsync(stoppingToken);
@@ -143,7 +147,16 @@ public static class InfrastructureDependencyInjection
             });
         }
 
-        services.AddSingleton<IEmailSender, LoggingEmailSender>();
+        // Envío de correo: "Smtp" para envío real (buzón de prueba o SMTP real de ADEX),
+        // cualquier otro valor usa el stub que solo registra en log. Alternar entre ambos
+        // es solo cambiar la variable Email__Provider (sin recompilar).
+        services.Configure<EmailOptions>(config.GetSection(EmailOptions.SectionName));
+        var emailOptions = config.GetSection(EmailOptions.SectionName).Get<EmailOptions>() ?? new EmailOptions();
+        if (string.Equals(emailOptions.Provider, "Smtp", StringComparison.OrdinalIgnoreCase))
+            services.AddSingleton<IEmailSender, SmtpEmailSender>();
+        else
+            services.AddSingleton<IEmailSender, LoggingEmailSender>();
+
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUser, HttpCurrentUser>();
         services.AddHostedService<VencimientoBackgroundService>();
@@ -203,6 +216,14 @@ public static class InfrastructureDependencyInjection
                     Asunto = "Puntos próximos a vencer",
                     CuerpoHtml = "<p>{{Empresa}}: tiene {{Puntos}} puntos que vencen el {{FechaVencimiento}}.</p>",
                     Variables = "Empresa,Puntos,FechaVencimiento",
+                    Activo = true
+                },
+                new PlantillaCorreo
+                {
+                    Codigo = "INFORMACION_BENEFICIOS",
+                    Asunto = "Beneficios disponibles para tu empresa",
+                    CuerpoHtml = "<p>Estimado(a) {{Empresa}}, estos son los beneficios disponibles:</p>{{Beneficios}}<p>Saldo de puntos disponible: {{SaldoDisponible}}</p>",
+                    Variables = "Empresa,Beneficios,SaldoDisponible",
                     Activo = true
                 });
         }

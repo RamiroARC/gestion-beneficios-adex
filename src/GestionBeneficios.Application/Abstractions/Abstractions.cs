@@ -47,6 +47,8 @@ public interface IPuntosDao
     Task<decimal> GetSaldoDisponibleAsync(int empresaId, CancellationToken ct = default);
     Task<PuntosResumenData> GetResumenAsync(int empresaId, DateOnly proximosAntesDe, CancellationToken ct = default);
     Task<IReadOnlyList<PuntoLote>> GetLotesVencidosAsync(DateOnly hasta, CancellationToken ct = default);
+    /// <summary>Lotes con puntos disponibles cuya FechaVencimiento cae en [desde, hasta] (inclusive). Para avisos previos de vencimiento.</summary>
+    Task<IReadOnlyList<PuntoLote>> GetLotesPorVencerAsync(DateOnly desde, DateOnly hasta, CancellationToken ct = default);
 }
 
 public record PuntosResumenData(decimal Generados, decimal Canjeados, decimal Disponibles, decimal ProximosAVencer, decimal Vencidos);
@@ -80,6 +82,8 @@ public interface ICorreoDao
     Task<(IReadOnlyList<CorreoEnviado> Items, int Total)> ListAsync(int page, int pageSize, CancellationToken ct = default);
     Task<IReadOnlyList<CorreoEnviado>> GetPendientesAsync(int take, CancellationToken ct = default);
     Task UpdateAsync(CorreoEnviado correo, CancellationToken ct = default);
+    /// <summary>True si ya existe un correo cuyo asunto contiene la marca dada (idempotencia de avisos).</summary>
+    Task<bool> ExisteConMarcaAsync(string marca, CancellationToken ct = default);
 }
 
 public interface ICargaMasivaDao

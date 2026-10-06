@@ -510,6 +510,7 @@ public class ContratacionAppService(
     IAuditoriaDao auditoria,
     ICorreoDao correos,
     IPlantillaCorreoDao plantillas,
+    IBeneficioDao beneficios,
     ICurrentUser user)
 {
     public async Task<PagedResult<ContratacionDto>> SearchAsync(int? empresaId, int? alumnoId, int page, int pageSize, CancellationToken ct = default)
@@ -589,6 +590,8 @@ public class ContratacionAppService(
         }, ct);
 
         await EncolarPlantillaAsync("PUNTOS_ACUMULADOS", c.EmpresaId, puntosGenerados, c.FechaFin, ct);
+        // Al acumular puntos se envía también la información de beneficios disponibles.
+        await EncolarInformacionBeneficiosAsync(c.EmpresaId, ct);
         await uow.SaveChangesAsync(ct);
 
         var loaded = await contrataciones.GetByIdAsync(c.ContratacionId, ct) ?? c;
@@ -637,18 +640,59 @@ public class ContratacionAppService(
         var empresa = await empresas.GetByIdAsync(empresaId, ct);
         var body = plantilla.CuerpoHtml
             .Replace("{{Empresa}}", empresa?.RazonSocial ?? "")
+            .Replace("{{Persona}}", empresa?.RazonSocial ?? "")
             .Replace("{{Puntos}}", puntosValor.ToString("0.00"))
             .Replace("{{FechaVencimiento}}", vencimiento.ToString("yyyy-MM-dd"))
             .Replace("{{SaldoDisponible}}", (await puntos.GetSaldoDisponibleAsync(empresaId, ct)).ToString("0.00"));
         await correos.EnqueueAsync(new CorreoEnviado
         {
             PlantillaId = plantilla.PlantillaId,
-            Destinatario = empresa?.RazonSocial + "@example.invalid",
+            Destinatario = DestinatarioEmpresa(empresa),
             Asunto = plantilla.Asunto,
             CuerpoHtml = body,
             Estado = EstadoCorreo.Pendiente
         }, ct);
     }
+
+    /// <summary>
+    /// Encola el correo "INFORMACION_BENEFICIOS": lista de beneficios activos (nombre + costo en
+    /// puntos) y el saldo disponible de la empresa. Dirigido al correo real de la empresa (CRM).
+    /// </summary>
+    private async Task EncolarInformacionBeneficiosAsync(int empresaId, CancellationToken ct)
+    {
+        var plantilla = await plantillas.GetByCodigoAsync("INFORMACION_BENEFICIOS", ct);
+        if (plantilla is null || !plantilla.Activo) return;
+
+        var empresa = await empresas.GetByIdAsync(empresaId, ct);
+        var (items, _) = await beneficios.ListAsync(soloActivos: true, page: 1, pageSize: 100, ct);
+        var saldo = await puntos.GetSaldoDisponibleAsync(empresaId, ct);
+
+        var lista = items.Count == 0
+            ? "<li>No hay beneficios disponibles por el momento.</li>"
+            : string.Join("", items.Select(b =>
+                $"<li>{b.Nombre} — {b.CostoPuntos:0} puntos</li>"));
+
+        var body = plantilla.CuerpoHtml
+            .Replace("{{Empresa}}", empresa?.RazonSocial ?? "")
+            .Replace("{{Persona}}", empresa?.RazonSocial ?? "")
+            .Replace("{{Beneficios}}", $"<ul>{lista}</ul>")
+            .Replace("{{SaldoDisponible}}", saldo.ToString("0.00"));
+
+        await correos.EnqueueAsync(new CorreoEnviado
+        {
+            PlantillaId = plantilla.PlantillaId,
+            Destinatario = DestinatarioEmpresa(empresa),
+            Asunto = plantilla.Asunto,
+            CuerpoHtml = body,
+            Estado = EstadoCorreo.Pendiente
+        }, ct);
+    }
+
+    /// <summary>Correo real de la empresa (del CRM). Si no hay, usa un placeholder trazable.</summary>
+    private static string DestinatarioEmpresa(Domain.Entities.EmpresaAsociada? empresa) =>
+        !string.IsNullOrWhiteSpace(empresa?.Correo)
+            ? empresa!.Correo!.Trim()
+            : $"{(string.IsNullOrWhiteSpace(empresa?.Ruc) ? "empresa" : empresa!.Ruc)}@example.invalid";
 
     private static void ValidateFechas(DateOnly inicio, DateOnly fin)
     {

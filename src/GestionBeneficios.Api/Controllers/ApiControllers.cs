@@ -142,6 +142,11 @@ public class PuntosController(PuntosAppService service) : ControllerBase
     [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> ProcesarVencimientos(CancellationToken ct)
         => Ok(new { procesados = await service.ProcesarVencimientosAsync(ct) });
+
+    [HttpPost("procesar-por-vencer")]
+    [Authorize(Roles = "Administrador")]
+    public async Task<IActionResult> ProcesarPorVencer(CancellationToken ct)
+        => Ok(new { avisos = await service.ProcesarPorVencerAsync(ct) });
 }
 
 [ApiController]

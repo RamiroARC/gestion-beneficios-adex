@@ -176,6 +176,11 @@ public class PuntosDao(BeneficiosDbContext db) : IPuntosDao
 
     public async Task<IReadOnlyList<PuntoLote>> GetLotesVencidosAsync(DateOnly hasta, CancellationToken ct = default) =>
         await db.PuntoLotes.Where(x => x.FechaVencimiento < hasta && x.PuntosDisponibles > 0).ToListAsync(ct);
+
+    public async Task<IReadOnlyList<PuntoLote>> GetLotesPorVencerAsync(DateOnly desde, DateOnly hasta, CancellationToken ct = default) =>
+        await db.PuntoLotes
+            .Where(x => x.PuntosDisponibles > 0 && x.FechaVencimiento >= desde && x.FechaVencimiento <= hasta)
+            .ToListAsync(ct);
 }
 
 public class BeneficioDao(BeneficiosDbContext db) : IBeneficioDao
@@ -256,6 +261,9 @@ public class CorreoDao(BeneficiosDbContext db) : ICorreoDao
         db.CorreosEnviados.Update(correo);
         return Task.CompletedTask;
     }
+
+    public Task<bool> ExisteConMarcaAsync(string marca, CancellationToken ct = default) =>
+        db.CorreosEnviados.AnyAsync(x => x.Asunto.Contains(marca), ct);
 }
 
 public class CargaMasivaDao(BeneficiosDbContext db) : ICargaMasivaDao

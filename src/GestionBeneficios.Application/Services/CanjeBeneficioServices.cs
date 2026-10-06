@@ -150,13 +150,14 @@ public class CanjeAppService(
         {
             var body = plantilla.CuerpoHtml
                 .Replace("{{Empresa}}", empresa.RazonSocial)
+                .Replace("{{Persona}}", empresa.RazonSocial)
                 .Replace("{{Beneficio}}", beneficio.Nombre)
                 .Replace("{{Puntos}}", beneficio.CostoPuntos.ToString("0.00"))
                 .Replace("{{SaldoDisponible}}", (await puntos.GetSaldoDisponibleAsync(req.EmpresaId, ct)).ToString("0.00"));
             await correos.EnqueueAsync(new CorreoEnviado
             {
                 PlantillaId = plantilla.PlantillaId,
-                Destinatario = $"{empresa.Ruc}@example.invalid",
+                Destinatario = !string.IsNullOrWhiteSpace(empresa.Correo) ? empresa.Correo!.Trim() : $"{empresa.Ruc}@example.invalid",
                 Asunto = plantilla.Asunto,
                 CuerpoHtml = body
             }, ct);
@@ -170,7 +171,15 @@ public class CanjeAppService(
         new(c.CanjeId, c.EmpresaId, c.Empresa?.Ruc ?? "", c.Empresa?.RazonSocial ?? "", c.BeneficioId, c.Beneficio?.Nombre ?? "", c.PuntosUsados, c.Estado.ToString(), c.FechaSolicitudUtc);
 }
 
-public class PuntosAppService(IPuntosDao puntos, IUnitOfWork uow, IAuditoriaDao auditoria, ICurrentUser user)
+public class PuntosAppService(
+    IPuntosDao puntos,
+    IUnitOfWork uow,
+    IAuditoriaDao auditoria,
+    ICurrentUser user,
+    IPlantillaCorreoDao plantillas,
+    ICorreoDao correos,
+    IEmpresaDao empresas,
+    IConfiguracionDao configuracion)
 {
     public Task<PuntosResumenDto> ResumenAsync(int empresaId, int diasProximos, CancellationToken ct = default) =>
         puntos.GetResumenAsync(empresaId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(diasProximos)), ct)
@@ -226,6 +235,81 @@ public class PuntosAppService(IPuntosDao puntos, IUnitOfWork uow, IAuditoriaDao 
         }
 
         return count;
+    }
+
+    /// <summary>
+    /// Genera avisos previos de vencimiento (plantilla PUNTOS_POR_VENCER) para los lotes cuyos
+    /// puntos vencen dentro de los días configurados en "RecordatorioDias" (ej. "30,15,7").
+    /// Es idempotente: no reenvía el mismo aviso (lote + umbral de días) gracias a una marca
+    /// en el asunto del correo. Devuelve la cantidad de avisos encolados.
+    /// </summary>
+    public async Task<int> ProcesarPorVencerAsync(CancellationToken ct = default)
+    {
+        var plantilla = await plantillas.GetByCodigoAsync("PUNTOS_POR_VENCER", ct);
+        if (plantilla is null || !plantilla.Activo) return 0;
+
+        // Días de recordatorio (configurables). Default 30,15,7 si no está definido.
+        var raw = await configuracion.GetValorAsync("RecordatorioDias", ct);
+        var dias = (raw ?? "30,15,7")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(s => int.TryParse(s, out var d) ? d : -1)
+            .Where(d => d > 0)
+            .Distinct()
+            .OrderByDescending(d => d)
+            .ToList();
+        if (dias.Count == 0) return 0;
+
+        var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
+        var encolados = 0;
+
+        foreach (var d in dias)
+        {
+            // Lotes que vencen EXACTAMENTE dentro de 'd' días (ventana del día objetivo).
+            var objetivo = hoy.AddDays(d);
+            var lotes = await puntos.GetLotesPorVencerAsync(objetivo, objetivo, ct);
+
+            foreach (var lote in lotes)
+            {
+                // Marca de idempotencia: un aviso por lote y umbral de días.
+                var marca = $"[RVENC:{lote.LoteId}:{d}]";
+                if (await correos.ExisteConMarcaAsync(marca, ct)) continue;
+
+                var empresa = await empresas.GetByIdAsync(lote.EmpresaId, ct);
+                var body = plantilla.CuerpoHtml
+                    .Replace("{{Empresa}}", empresa?.RazonSocial ?? "")
+                    .Replace("{{Persona}}", empresa?.RazonSocial ?? "")
+                    .Replace("{{Puntos}}", lote.PuntosDisponibles.ToString("0.00"))
+                    .Replace("{{FechaVencimiento}}", lote.FechaVencimiento.ToString("yyyy-MM-dd"));
+
+                var destino = !string.IsNullOrWhiteSpace(empresa?.Correo)
+                    ? empresa!.Correo!.Trim()
+                    : $"{(string.IsNullOrWhiteSpace(empresa?.Ruc) ? "empresa" : empresa!.Ruc)}@example.invalid";
+
+                await correos.EnqueueAsync(new CorreoEnviado
+                {
+                    PlantillaId = plantilla.PlantillaId,
+                    Destinatario = destino,
+                    Asunto = $"{plantilla.Asunto} {marca}",
+                    CuerpoHtml = body,
+                    Estado = EstadoCorreo.Pendiente
+                }, ct);
+                encolados++;
+            }
+        }
+
+        if (encolados > 0)
+        {
+            await auditoria.AddAsync(new AuditoriaEvento
+            {
+                Usuario = user.UserName,
+                Accion = "PUNTOS_POR_VENCER_JOB",
+                Entidad = nameof(PuntoLote),
+                ValorNuevo = $"avisos={encolados}"
+            }, ct);
+            await uow.SaveChangesAsync(ct);
+        }
+
+        return encolados;
     }
 }
 

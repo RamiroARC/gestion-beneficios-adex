@@ -91,6 +91,12 @@ Copy-Item -Path (Join-Path $repoRoot "deploy\Update-PreProduction.ps1")  -Destin
 Copy-Item -Path (Join-Path $repoRoot "deploy\INSTRUCCIONES-SYSADMIN.md") -Destination $OutputDir -Force -ErrorAction SilentlyContinue
 Write-Ok "Scripts (check + deploy + update) e instrucciones copiados"
 
+# Tareas programadas de sincronización del CRM (Empresas / Alumnos)
+$pkgTasks = Join-Path $OutputDir "scheduled-tasks"
+New-Item -ItemType Directory -Path $pkgTasks -Force | Out-Null
+Copy-Item -Path (Join-Path $repoRoot "deploy\scheduled-tasks\*") -Destination $pkgTasks -Recurse -Force
+Write-Ok "Scripts de tareas programadas (scheduled-tasks) copiados"
+
 # ---------------------------------------------------------------------------
 # 4. Resumen
 # ---------------------------------------------------------------------------
@@ -102,6 +108,7 @@ Contenido de '$OutputDir':
   Check-Prerequisites.ps1       -> VERIFICACION previa (admin, solo lectura): valida el servidor
   Deploy-PreProduction.ps1      -> PRIMER despliegue (admin): configura IIS completo
   Update-PreProduction.ps1      -> ACTUALIZACIONES (admin): reemplaza artefactos sin tocar IIS
+  scheduled-tasks\              -> tareas programadas de sync CRM (Empresas 02:00 / Alumnos cada 5h)
   INSTRUCCIONES-SYSADMIN.md     -> guia para el administrador
 
 Siguiente paso:

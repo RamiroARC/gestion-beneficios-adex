@@ -175,3 +175,44 @@ Alternativa (si se prefiere aplicarlo manualmente antes): ejecutar el script ide
 - **CORS**: si el frontend se sirve desde el mismo sitio/host que la API (recomendado), no se
   requiere configuración adicional de CORS. Si se sirve desde otro host, agregar ese origen a
   `Cors:Origins` en `appsettings.PreProduction.json`. No usar `AllowAnyOrigin`.
+
+---
+
+## Tareas programadas de sincronización del CRM
+
+La carpeta `scheduled-tasks\` del paquete trae scripts para automatizar la sincronización del
+CRM mediante el **Programador de tareas de Windows**. **No modifican la aplicación**: solo
+consumen endpoints HTTP ya existentes.
+
+| Script | Qué hace | Frecuencia |
+|--------|----------|-----------|
+| `Sync-Empresas.ps1` | Sincroniza el catálogo completo de Empresas (`POST /api/v1/empresas/sync`) | Diaria 02:00 |
+| `Sync-Alumnos.ps1` | Refresca los alumnos **ya registrados** por DNI/código (`POST /api/v1/alumnos/sync/{criterio}`) | Cada 5 horas |
+| `Register-ScheduledTasks.ps1` | Registra ambas tareas en el Programador de tareas | — |
+
+### Instalación
+
+1. Copiar la carpeta `scheduled-tasks\` del paquete al servidor (por ejemplo a
+   `C:\deploy\scheduled-tasks\`).
+2. En PowerShell **como Administrador**, ejecutar:
+   ```powershell
+   C:\deploy\scheduled-tasks\Register-ScheduledTasks.ps1
+   ```
+   Crea las tareas `GB-Sync-Empresas` (diaria 02:00) y `GB-Sync-Alumnos` (cada 5 h), que corren
+   como `SYSTEM`.
+3. Probar manualmente y revisar el log:
+   ```powershell
+   Start-ScheduledTask -TaskName "GB-Sync-Empresas"
+   Get-Content "C:\deploy\logs\scheduled-tasks\sync-empresas_$(Get-Date -Format yyyyMMdd).log"
+   ```
+
+### Notas
+
+- Ambas tareas requieren que la API esté arriba (`http://localhost:9020`) y que
+  `CrmEmpresas__CodUser` esté configurado en el App Pool de IIS. Sin el `CodUser`, el CRM
+  rechaza la autenticación y el resultado queda registrado como error en el log de la tarea.
+- **Alumnos (Opción C)**: el CRM de Alumnos no expone listado masivo (solo búsqueda por DNI o
+  código), por lo que la tarea **refresca los alumnos existentes**; no descubre alumnos nuevos.
+- Los logs quedan en `C:\deploy\logs\scheduled-tasks\` con un archivo por día.
+- Si cambian los puertos o la URL base, pasar `-BaseUrl` a los scripts o editar los parámetros
+  por defecto.
