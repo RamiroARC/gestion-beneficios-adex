@@ -157,6 +157,7 @@ public class EmpresaAppService(
     {
         var nuevas = 0;
         var actualizadas = 0;
+        var loteSize = 0;
 
         foreach (var item in items)
         {
@@ -166,6 +167,11 @@ public class EmpresaAppService(
             await UpsertFromCrmAsync(item, ct, existing);
             if (isNew) nuevas++;
             else actualizadas++;
+
+            // Guardar por lotes de 50 para evitar clave duplicada en el siguiente ciclo
+            // (sin SaveChanges, GetByCrmIdAsync no ve los registros aún no persistidos).
+            if (++loteSize % 50 == 0)
+                await uow.SaveChangesAsync(ct);
         }
 
         return (nuevas, actualizadas);
