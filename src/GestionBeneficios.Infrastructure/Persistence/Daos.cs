@@ -121,6 +121,41 @@ public class ContratacionDao(BeneficiosDbContext db) : IContratacionDao
             x.Estado != EstadoContratacion.Anulada &&
             (excludeId == null || x.ContratacionId != excludeId) &&
             x.FechaInicio < fin && inicio < x.FechaFin, ct);
+
+    public async Task<IReadOnlyDictionary<int, ContratacionResumenEmpresa>> GetResumenPorEmpresaAsync(DateTime nuevosDesde, CancellationToken ct = default)
+    {
+        // Conteos por empresa en UNA consulta (total, nuevos, vigentes, vencidas).
+        var conteos = await db.Contrataciones
+            .GroupBy(x => x.EmpresaId)
+            .Select(g => new
+            {
+                EmpresaId = g.Key,
+                Total = g.Count(),
+                Nuevos = g.Count(x => x.CreadoUtc >= nuevosDesde),
+                Vigentes = g.Count(x => x.Estado == EstadoContratacion.Vigente),
+                Vencidas = g.Count(x => x.Estado == EstadoContratacion.Vencida)
+            })
+            .ToListAsync(ct);
+
+        // Alumnos distintos por empresa en UNA consulta.
+        var alumnosDistintos = await db.Contrataciones
+            .Select(x => new { x.EmpresaId, x.AlumnoId })
+            .Distinct()
+            .GroupBy(x => x.EmpresaId)
+            .Select(g => new { EmpresaId = g.Key, Distintos = g.Count() })
+            .ToListAsync(ct);
+
+        var distintosMap = alumnosDistintos.ToDictionary(x => x.EmpresaId, x => x.Distintos);
+
+        return conteos.ToDictionary(
+            c => c.EmpresaId,
+            c => new ContratacionResumenEmpresa(
+                c.Total,
+                distintosMap.GetValueOrDefault(c.EmpresaId),
+                c.Nuevos,
+                c.Vigentes,
+                c.Vencidas));
+    }
 }
 
 public class PuntosDao(BeneficiosDbContext db) : IPuntosDao
@@ -289,6 +324,15 @@ public class CanjeDao(BeneficiosDbContext db) : ICanjeDao
         var total = await query.CountAsync(ct);
         var items = await query.OrderByDescending(x => x.FechaSolicitudUtc).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
         return (items, total);
+    }
+
+    public async Task<IReadOnlyDictionary<int, int>> GetConteoPorEmpresaAsync(CancellationToken ct = default)
+    {
+        var conteos = await db.Canjes
+            .GroupBy(x => x.EmpresaId)
+            .Select(g => new { EmpresaId = g.Key, Cantidad = g.Count() })
+            .ToListAsync(ct);
+        return conteos.ToDictionary(x => x.EmpresaId, x => x.Cantidad);
     }
 }
 

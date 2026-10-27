@@ -35,7 +35,12 @@ public interface IContratacionDao
     Task AddAsync(Contratacion contratacion, CancellationToken ct = default);
     Task UpdateAsync(Contratacion contratacion, CancellationToken ct = default);
     Task<bool> ExisteSolapeAsync(int alumnoId, DateOnly inicio, DateOnly fin, int? excludeId, CancellationToken ct = default);
+    /// <summary>Conteos de contrataciones agrupados POR empresa en consultas únicas (para el dashboard, evita N+1).</summary>
+    Task<IReadOnlyDictionary<int, ContratacionResumenEmpresa>> GetResumenPorEmpresaAsync(DateTime nuevosDesde, CancellationToken ct = default);
 }
+
+/// <summary>Conteos agregados de contrataciones de una empresa (para el dashboard).</summary>
+public record ContratacionResumenEmpresa(int Total, int AlumnosDistintos, int Nuevos, int Vigentes, int Vencidas);
 
 public interface IPuntosDao
 {
@@ -70,6 +75,8 @@ public interface ICanjeDao
     Task<Canje?> GetByIdempotencyAsync(string key, CancellationToken ct = default);
     Task AddAsync(Canje canje, CancellationToken ct = default);
     Task<(IReadOnlyList<Canje> Items, int Total)> ListAsync(int? empresaId, int page, int pageSize, CancellationToken ct = default);
+    /// <summary>Cantidad de canjes agrupada POR empresa en una consulta única (para el dashboard).</summary>
+    Task<IReadOnlyDictionary<int, int>> GetConteoPorEmpresaAsync(CancellationToken ct = default);
 }
 
 public interface IPlantillaCorreoDao

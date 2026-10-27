@@ -344,26 +344,20 @@ public class DashboardAppService(
     {
         var kpis = await GetAsync(ct);
         var (empsAll, _) = await empresas.SearchAsync(null, 1, 10000, ct);
-        var (contrs, _) = await contrataciones.SearchAsync(null, null, 1, 50000, ct);
-        var (canjeList, _) = await canjes.ListAsync(null, 1, 50000, ct);
         var nuevosDesde = DateTime.UtcNow.AddDays(-90);
         var proximosAntesDe = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30));
 
-        // Resumen de puntos por empresa en consultas únicas (antes: 5 consultas por empresa).
+        // Todo agregado por empresa con GROUP BY en SQL (sin traer 50k contrataciones/canjes a memoria):
         var resumenPorEmpresa = await puntos.GetResumenPorEmpresaAsync(proximosAntesDe, ct);
-        // Agrupaciones en memoria sobre las listas ya traídas (sin ir a BD por empresa).
-        var contrsPorEmpresa = contrs.GroupBy(c => c.EmpresaId).ToDictionary(g => g.Key, g => g.ToList());
-        var canjesPorEmpresa = canjeList.GroupBy(c => c.EmpresaId).ToDictionary(g => g.Key, g => g.Count());
+        var contrsPorEmpresa = await contrataciones.GetResumenPorEmpresaAsync(nuevosDesde, ct);
+        var canjesPorEmpresa = await canjes.GetConteoPorEmpresaAsync(ct);
         var resumenVacio = new PuntosResumenData(0, 0, 0, 0, 0);
+        var contrVacio = new ContratacionResumenEmpresa(0, 0, 0, 0, 0);
 
         var filas = new List<DashboardEmpresaFilaDto>();
         foreach (var e in empsAll)
         {
-            var empresaContrs = contrsPorEmpresa.GetValueOrDefault(e.EmpresaId) ?? new List<Contratacion>();
-            var alumnosCount = empresaContrs.Select(c => c.AlumnoId).Distinct().Count();
-            var nuevos = empresaContrs.Count(c => c.CreadoUtc >= nuevosDesde);
-            var vigentesCount = empresaContrs.Count(c => c.Estado == EstadoContratacion.Vigente);
-            var vencidasCount = empresaContrs.Count(c => c.Estado == EstadoContratacion.Vencida);
+            var c = contrsPorEmpresa.GetValueOrDefault(e.EmpresaId, contrVacio);
             var canjesCount = canjesPorEmpresa.GetValueOrDefault(e.EmpresaId);
             var resumen = resumenPorEmpresa.GetValueOrDefault(e.EmpresaId, resumenVacio);
             var puntosPorCanje = canjesCount > 0 ? Math.Round(resumen.Canjeados / canjesCount, 2) : 0;
@@ -371,12 +365,12 @@ public class DashboardAppService(
             filas.Add(new DashboardEmpresaFilaDto(
                 e.EmpresaId,
                 e.RazonSocial,
-                alumnosCount,
-                nuevos,
-                empresaContrs.Count,
+                c.AlumnosDistintos,
+                c.Nuevos,
+                c.Total,
                 resumen.Generados,
-                vigentesCount,
-                vencidasCount,
+                c.Vigentes,
+                c.Vencidas,
                 canjesCount,
                 resumen.Canjeados,
                 resumen.Disponibles,
