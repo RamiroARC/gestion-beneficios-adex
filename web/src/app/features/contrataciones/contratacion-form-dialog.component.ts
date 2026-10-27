@@ -305,7 +305,8 @@ export class ContratacionFormDialogComponent implements OnInit {
           matchesText(`${a.nombres} ${a.apellidos}`, q) ||
           matchesText(a.nombres, q) ||
           matchesText(a.apellidos, q) ||
-          matchesText(a.codigoAlumno, q)
+          matchesText(a.codigoAlumno, q) ||
+          matchesText(a.dni ?? '', q)
       )
       .slice(0, 25);
   });
@@ -357,7 +358,7 @@ export class ContratacionFormDialogComponent implements OnInit {
     } else {
     forkJoin({
       empresas: this.api.empresas('', 1, 200),
-      alumnos: this.api.alumnos('', 1, 200)
+      alumnos: this.api.alumnos('', 1, 500)
     }).subscribe({
       next: ({ empresas, alumnos }) => {
         this.mergeEmpresas(empresas.items ?? []);

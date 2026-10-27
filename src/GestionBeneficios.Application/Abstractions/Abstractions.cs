@@ -49,6 +49,10 @@ public interface IPuntosDao
     Task<IReadOnlyList<PuntoLote>> GetLotesVencidosAsync(DateOnly hasta, CancellationToken ct = default);
     /// <summary>Lotes con puntos disponibles cuya FechaVencimiento cae en [desde, hasta] (inclusive). Para avisos previos de vencimiento.</summary>
     Task<IReadOnlyList<PuntoLote>> GetLotesPorVencerAsync(DateOnly desde, DateOnly hasta, CancellationToken ct = default);
+    /// <summary>Resumen agregado GLOBAL de puntos (todas las empresas) en consultas únicas. Para el dashboard.</summary>
+    Task<PuntosResumenData> GetResumenGlobalAsync(DateOnly proximosAntesDe, CancellationToken ct = default);
+    /// <summary>Resumen de puntos agrupado POR empresa, en consultas únicas (evita N+1 en el dashboard).</summary>
+    Task<IReadOnlyDictionary<int, PuntosResumenData>> GetResumenPorEmpresaAsync(DateOnly proximosAntesDe, CancellationToken ct = default);
 }
 
 public record PuntosResumenData(decimal Generados, decimal Canjeados, decimal Disponibles, decimal ProximosAVencer, decimal Vencidos);

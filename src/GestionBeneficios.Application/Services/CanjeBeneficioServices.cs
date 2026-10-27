@@ -331,20 +331,13 @@ public class DashboardAppService(
         var (bens, benTotal) = await beneficios.ListAsync(true, 1, 1, ct);
         var (canjeList, canjeTotal) = await canjes.ListAsync(null, 1, 1, ct);
 
-        decimal gen = 0, canj = 0, disp = 0, prox = 0, venc = 0;
-        var (empsAll, _) = await empresas.SearchAsync(null, 1, 10000, ct);
-        foreach (var e in empsAll)
-        {
-            var r = await puntos.GetResumenAsync(e.EmpresaId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30)), ct);
-            gen += r.Generados;
-            canj += r.Canjeados;
-            disp += r.Disponibles;
-            prox += r.ProximosAVencer;
-            venc += r.Vencidos;
-        }
+        // Agregado global en consultas únicas (en vez de 5 consultas por cada empresa).
+        var resumen = await puntos.GetResumenGlobalAsync(DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30)), ct);
 
         return new DashboardKpisDto(
-            empTotal, alumTotal, vigentes, vencidas, gen, canj, disp, prox, venc, canjeTotal, benTotal);
+            empTotal, alumTotal, vigentes, vencidas,
+            resumen.Generados, resumen.Canjeados, resumen.Disponibles,
+            resumen.ProximosAVencer, resumen.Vencidos, canjeTotal, benTotal);
     }
 
     public async Task<DashboardOverviewDto> GetOverviewAsync(CancellationToken ct = default)
@@ -356,16 +349,23 @@ public class DashboardAppService(
         var nuevosDesde = DateTime.UtcNow.AddDays(-90);
         var proximosAntesDe = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30));
 
+        // Resumen de puntos por empresa en consultas únicas (antes: 5 consultas por empresa).
+        var resumenPorEmpresa = await puntos.GetResumenPorEmpresaAsync(proximosAntesDe, ct);
+        // Agrupaciones en memoria sobre las listas ya traídas (sin ir a BD por empresa).
+        var contrsPorEmpresa = contrs.GroupBy(c => c.EmpresaId).ToDictionary(g => g.Key, g => g.ToList());
+        var canjesPorEmpresa = canjeList.GroupBy(c => c.EmpresaId).ToDictionary(g => g.Key, g => g.Count());
+        var resumenVacio = new PuntosResumenData(0, 0, 0, 0, 0);
+
         var filas = new List<DashboardEmpresaFilaDto>();
         foreach (var e in empsAll)
         {
-            var empresaContrs = contrs.Where(c => c.EmpresaId == e.EmpresaId).ToList();
+            var empresaContrs = contrsPorEmpresa.GetValueOrDefault(e.EmpresaId) ?? new List<Contratacion>();
             var alumnosCount = empresaContrs.Select(c => c.AlumnoId).Distinct().Count();
             var nuevos = empresaContrs.Count(c => c.CreadoUtc >= nuevosDesde);
             var vigentesCount = empresaContrs.Count(c => c.Estado == EstadoContratacion.Vigente);
             var vencidasCount = empresaContrs.Count(c => c.Estado == EstadoContratacion.Vencida);
-            var canjesCount = canjeList.Count(c => c.EmpresaId == e.EmpresaId);
-            var resumen = await puntos.GetResumenAsync(e.EmpresaId, proximosAntesDe, ct);
+            var canjesCount = canjesPorEmpresa.GetValueOrDefault(e.EmpresaId);
+            var resumen = resumenPorEmpresa.GetValueOrDefault(e.EmpresaId, resumenVacio);
             var puntosPorCanje = canjesCount > 0 ? Math.Round(resumen.Canjeados / canjesCount, 2) : 0;
 
             filas.Add(new DashboardEmpresaFilaDto(

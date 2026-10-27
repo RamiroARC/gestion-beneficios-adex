@@ -181,6 +181,76 @@ public class PuntosDao(BeneficiosDbContext db) : IPuntosDao
         await db.PuntoLotes
             .Where(x => x.PuntosDisponibles > 0 && x.FechaVencimiento >= desde && x.FechaVencimiento <= hasta)
             .ToListAsync(ct);
+
+    // ─── Agregados globales para el dashboard (evitan N+1) ──────────────────────
+
+    public async Task<PuntosResumenData> GetResumenGlobalAsync(DateOnly proximosAntesDe, CancellationToken ct = default)
+    {
+        var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        // Movimientos agregados por tipo en UNA consulta.
+        var porTipo = await db.PuntoMovimientos
+            .GroupBy(x => x.Tipo)
+            .Select(g => new { Tipo = g.Key, Total = g.Sum(x => (decimal?)x.Puntos) ?? 0 })
+            .ToListAsync(ct);
+
+        decimal generados = porTipo.FirstOrDefault(x => x.Tipo == TipoPuntoMovimiento.Acumulacion)?.Total ?? 0;
+        decimal canjeados = porTipo.FirstOrDefault(x => x.Tipo == TipoPuntoMovimiento.Canje)?.Total ?? 0;
+        decimal vencidos  = porTipo.FirstOrDefault(x => x.Tipo == TipoPuntoMovimiento.Vencimiento)?.Total ?? 0;
+
+        var disponibles = await db.PuntoLotes
+            .Where(x => x.FechaVencimiento >= hoy)
+            .SumAsync(x => (decimal?)x.PuntosDisponibles, ct) ?? 0;
+        var proximos = await db.PuntoLotes
+            .Where(x => x.FechaVencimiento >= hoy && x.FechaVencimiento <= proximosAntesDe)
+            .SumAsync(x => (decimal?)x.PuntosDisponibles, ct) ?? 0;
+
+        return new PuntosResumenData(generados, canjeados, disponibles, proximos, vencidos);
+    }
+
+    public async Task<IReadOnlyDictionary<int, PuntosResumenData>> GetResumenPorEmpresaAsync(DateOnly proximosAntesDe, CancellationToken ct = default)
+    {
+        var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        // Movimientos agrupados por empresa y tipo (UNA consulta).
+        var movs = await db.PuntoMovimientos
+            .GroupBy(x => new { x.EmpresaId, x.Tipo })
+            .Select(g => new { g.Key.EmpresaId, g.Key.Tipo, Total = g.Sum(x => (decimal?)x.Puntos) ?? 0 })
+            .ToListAsync(ct);
+
+        // Lotes disponibles por empresa (UNA consulta).
+        var disp = await db.PuntoLotes
+            .Where(x => x.FechaVencimiento >= hoy)
+            .GroupBy(x => x.EmpresaId)
+            .Select(g => new { EmpresaId = g.Key, Total = g.Sum(x => (decimal?)x.PuntosDisponibles) ?? 0 })
+            .ToListAsync(ct);
+
+        // Lotes próximos a vencer por empresa (UNA consulta).
+        var prox = await db.PuntoLotes
+            .Where(x => x.FechaVencimiento >= hoy && x.FechaVencimiento <= proximosAntesDe)
+            .GroupBy(x => x.EmpresaId)
+            .Select(g => new { EmpresaId = g.Key, Total = g.Sum(x => (decimal?)x.PuntosDisponibles) ?? 0 })
+            .ToListAsync(ct);
+
+        var dispMap = disp.ToDictionary(x => x.EmpresaId, x => x.Total);
+        var proxMap = prox.ToDictionary(x => x.EmpresaId, x => x.Total);
+
+        var empresaIds = movs.Select(m => m.EmpresaId)
+            .Concat(dispMap.Keys)
+            .Concat(proxMap.Keys)
+            .Distinct();
+
+        var result = new Dictionary<int, PuntosResumenData>();
+        foreach (var id in empresaIds)
+        {
+            decimal gen = movs.FirstOrDefault(m => m.EmpresaId == id && m.Tipo == TipoPuntoMovimiento.Acumulacion)?.Total ?? 0;
+            decimal canj = movs.FirstOrDefault(m => m.EmpresaId == id && m.Tipo == TipoPuntoMovimiento.Canje)?.Total ?? 0;
+            decimal venc = movs.FirstOrDefault(m => m.EmpresaId == id && m.Tipo == TipoPuntoMovimiento.Vencimiento)?.Total ?? 0;
+            result[id] = new PuntosResumenData(gen, canj, dispMap.GetValueOrDefault(id), proxMap.GetValueOrDefault(id), venc);
+        }
+
+        return result;
+    }
 }
 
 public class BeneficioDao(BeneficiosDbContext db) : IBeneficioDao
