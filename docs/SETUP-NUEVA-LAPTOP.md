@@ -12,6 +12,59 @@ de la laptop actual **antes** de cambiar de equipo (los `.env` no están en GitH
 
 ---
 
+## 0. Requisitos de software en la laptop nueva
+
+Versiones tomadas del equipo anterior (noviembre 2026). Instalar primero esto, después clonar.
+
+### Comunes a todos los proyectos
+| Requisito | Versión de referencia | Nota |
+|-----------|-----------------------|------|
+| Git | 2.55 o superior | Con sesión iniciada en GitHub (cuenta `RamiroARC`) |
+| Node.js | 24.x (v24.21.0) | Todos los proyectos Node y el frontend Angular |
+| npm | 11.x | Viene con Node. `gestion-beneficios-adex/web` declara `npm@11.17.0` |
+| PowerShell | 5.1 (incluido en Windows) | |
+
+**Política de ejecución de PowerShell.** Por defecto bloquea `npm.ps1` ("la ejecución de scripts está
+deshabilitada"). Ejecutar una sola vez:
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+Alternativa sin cambiar la política: usar `npm.cmd` y `node_modules/.bin/ng.cmd`.
+
+### gestion-beneficios-adex (proyecto principal)
+| Requisito | Versión de referencia | Obligatorio | Nota |
+|-----------|-----------------------|-------------|------|
+| .NET SDK | 10.0.401 | Sí | Incluye el runtime ASP.NET Core 10 |
+| Node.js + npm | ver tabla anterior | Sí | Frontend Angular 22 en `web/` |
+| Angular CLI | local (no instalar global) | No | Lo trae `npm install` en `web/`; se usa con `node_modules/.bin/ng.cmd` |
+| `dotnet-ef` | 10.0.x (`dotnet tool install -g dotnet-ef`) | No | Solo para **crear** migraciones; las existentes se aplican solas al arrancar |
+| Cliente de Escritorio Remoto | incluido en Windows | Para desplegar | Acceso RDP al servidor 10.31.1.222 |
+| Red/VPN de ADEX | | Para desplegar | Alcance a 10.31.1.222 (IIS) y 10.31.1.220 (SQL Server) |
+
+En la laptop **no** hace falta instalar SQL Server, IIS ni el ASP.NET Core Hosting Bundle: en local la app usa
+SQLite (se crea sola con datos de ejemplo) y el CRM va en modo simulado. IIS y el Hosting Bundle .NET 10 son
+requisitos del **servidor**, que ya los tiene. Puertos locales libres: 5280 (API) y 4200 (Angular).
+
+Prueba rápida de que todo quedó bien:
+```bash
+git checkout development
+cd web && npm install          # frontend
+cd ../src/GestionBeneficios.Api && dotnet run          # API en http://localhost:5280
+cd ../../web && node_modules/.bin/ng.cmd serve         # frontend en http://localhost:4200
+```
+
+### Otros proyectos
+| Proyecto | Stack | Extra necesario |
+|----------|-------|-----------------|
+| condominios | NestJS 10, TypeScript 5.7, MongoDB | `.env` con MongoDB Atlas (base de desarrollo) |
+| condominios-web | Next.js 16, React 19 | `.env.local` y la API de `condominios` en marcha |
+| reserva-salas | Express + React/Vite, MongoDB Atlas | `.env`; se publica en Vercel (equipo Dyadra), necesita acceso a esa cuenta para redesplegar |
+| Tareo | React 19 + Vite 6, Azure AD y SharePoint | `.env` con los IDs de Azure y SharePoint |
+
+Ninguno requiere Docker ni MongoDB local (usan Atlas en la nube).
+
+---
+
 ## 1. Clonar los repos
 
 ```bash
@@ -163,6 +216,9 @@ Copia estos archivos a un lugar seguro (USB, gestor de contraseñas, etc.). **No
 - `condominios-web\.env.local`
 - `reserva-salas\.env`
 - `Tareo\.env`
+
+Lleva también, si los tienes: el acceso al panel de **Mailtrap** (para ver los correos de prueba) y las
+credenciales de **GitHub** y **Vercel**.
 
 Para gestion-beneficios-adex, anota los secretos que están configurados en el **IIS del servidor**
 (no en la laptop): connection string de SQL, JWT key, credenciales SMTP (`Email__User` / `Email__Password`).
