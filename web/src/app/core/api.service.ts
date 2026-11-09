@@ -22,6 +22,7 @@ import {
   EmpresaSyncResult,
   PagedResult,
   PlantillaCorreo,
+  UpsertPlantillaRequest,
   PuntoMovimiento,
   PuntosResumen
 } from './models';
@@ -186,6 +187,14 @@ export class ApiService {
     return this.http.get<PagedResult<PlantillaCorreo>>(`${this.base}/plantillas-correo`, {
       params: { page, pageSize }
     });
+  }
+
+  createPlantilla(req: UpsertPlantillaRequest) {
+    return this.http.post<PlantillaCorreo>(`${this.base}/plantillas-correo`, req);
+  }
+
+  updatePlantilla(id: number, req: UpsertPlantillaRequest) {
+    return this.http.put<PlantillaCorreo>(`${this.base}/plantillas-correo/${id}`, req);
   }
 
   correos(page = 1, pageSize = 50) {

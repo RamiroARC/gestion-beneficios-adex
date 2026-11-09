@@ -205,9 +205,13 @@ public static class InfrastructureDependencyInjection
                 new PlantillaCorreo
                 {
                     Codigo = "CANJE_CONFIRMADO",
-                    Asunto = "Confirmación de canje",
-                    CuerpoHtml = "<p>{{Empresa}} canjeó {{Beneficio}} por {{Puntos}} puntos. Saldo: {{SaldoDisponible}}</p>",
-                    Variables = "Empresa,Beneficio,Puntos,SaldoDisponible",
+                    Asunto = "{Codigo} - {Empresa}",
+                    CuerpoHtml = "<p>Estimado usuario,</p>" +
+                        "<p>Se confirma el canje de {Empresa},</p>" +
+                        "<p>Por: {Puntos}</p>" +
+                        "<p>Saldo: {SaldoDisponible}</p>" +
+                        "<p>Atentamente,<br>Sistema de Gestión de Beneficios</p>",
+                    Variables = "Codigo,Empresa,Beneficio,Puntos,SaldoDisponible",
                     Activo = true
                 },
                 new PlantillaCorreo
@@ -226,6 +230,24 @@ public static class InfrastructureDependencyInjection
                     Variables = "Empresa,Beneficios,SaldoDisponible",
                     Activo = true
                 });
+        }
+        else
+        {
+            // Actualización suave de CANJE_CONFIRMADO al nuevo formato (asunto con código+empresa
+            // y cuerpo configurable con tags de una llave). Solo se aplica si la plantilla
+            // conserva el cuerpo viejo sembrado, para NO pisar ediciones hechas por el usuario.
+            const string cuerpoViejo = "<p>{{Empresa}} canjeó {{Beneficio}} por {{Puntos}} puntos. Saldo: {{SaldoDisponible}}</p>";
+            var canje = await db.PlantillasCorreo.FirstOrDefaultAsync(p => p.Codigo == "CANJE_CONFIRMADO");
+            if (canje is not null && canje.CuerpoHtml == cuerpoViejo)
+            {
+                canje.Asunto = "{Codigo} - {Empresa}";
+                canje.CuerpoHtml = "<p>Estimado usuario,</p>" +
+                    "<p>Se confirma el canje de {Empresa},</p>" +
+                    "<p>Por: {Puntos}</p>" +
+                    "<p>Saldo: {SaldoDisponible}</p>" +
+                    "<p>Atentamente,<br>Sistema de Gestión de Beneficios</p>";
+                canje.Variables = "Codigo,Empresa,Beneficio,Puntos,SaldoDisponible";
+            }
         }
 
         if (!await db.Beneficios.AnyAsync())

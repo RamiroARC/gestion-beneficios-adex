@@ -218,6 +218,14 @@ export interface PlantillaCorreo {
   activo: boolean;
 }
 
+export interface UpsertPlantillaRequest {
+  codigo: string;
+  asunto: string;
+  cuerpoHtml: string;
+  variables?: string;
+  activo: boolean;
+}
+
 export interface CorreoEnviado {
   correoId: number;
   destinatario: string;

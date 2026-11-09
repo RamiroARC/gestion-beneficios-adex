@@ -148,17 +148,23 @@ public class CanjeAppService(
         var plantilla = await plantillas.GetByCodigoAsync("CANJE_CONFIRMADO", ct);
         if (plantilla is { Activo: true })
         {
-            var body = plantilla.CuerpoHtml
-                .Replace("{{Empresa}}", empresa.RazonSocial)
-                .Replace("{{Persona}}", empresa.RazonSocial)
-                .Replace("{{Beneficio}}", beneficio.Nombre)
-                .Replace("{{Puntos}}", beneficio.CostoPuntos.ToString("0.00"))
-                .Replace("{{SaldoDisponible}}", (await puntos.GetSaldoDisponibleAsync(req.EmpresaId, ct)).ToString("0.00"));
+            var saldoDisponible = await puntos.GetSaldoDisponibleAsync(req.EmpresaId, ct);
+            var valores = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Codigo"] = plantilla.Codigo,
+                ["Empresa"] = empresa.RazonSocial,
+                ["Persona"] = empresa.RazonSocial,
+                ["Beneficio"] = beneficio.Nombre,
+                ["Puntos"] = beneficio.CostoPuntos.ToString("0.00"),
+                ["SaldoDisponible"] = saldoDisponible.ToString("0.00")
+            };
+            var asunto = PlantillaRender.Render(plantilla.Asunto, valores);
+            var body = PlantillaRender.Render(plantilla.CuerpoHtml, valores);
             await correos.EnqueueAsync(new CorreoEnviado
             {
                 PlantillaId = plantilla.PlantillaId,
                 Destinatario = !string.IsNullOrWhiteSpace(empresa.Correo) ? empresa.Correo!.Trim() : $"{empresa.Ruc}@example.invalid",
-                Asunto = plantilla.Asunto,
+                Asunto = asunto,
                 CuerpoHtml = body
             }, ct);
         }
@@ -275,11 +281,16 @@ public class PuntosAppService(
                 if (await correos.ExisteConMarcaAsync(marca, ct)) continue;
 
                 var empresa = await empresas.GetByIdAsync(lote.EmpresaId, ct);
-                var body = plantilla.CuerpoHtml
-                    .Replace("{{Empresa}}", empresa?.RazonSocial ?? "")
-                    .Replace("{{Persona}}", empresa?.RazonSocial ?? "")
-                    .Replace("{{Puntos}}", lote.PuntosDisponibles.ToString("0.00"))
-                    .Replace("{{FechaVencimiento}}", lote.FechaVencimiento.ToString("yyyy-MM-dd"));
+                var valores = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["Codigo"] = plantilla.Codigo,
+                    ["Empresa"] = empresa?.RazonSocial ?? "",
+                    ["Persona"] = empresa?.RazonSocial ?? "",
+                    ["Puntos"] = lote.PuntosDisponibles.ToString("0.00"),
+                    ["FechaVencimiento"] = lote.FechaVencimiento.ToString("yyyy-MM-dd")
+                };
+                var asunto = PlantillaRender.Render(plantilla.Asunto, valores);
+                var body = PlantillaRender.Render(plantilla.CuerpoHtml, valores);
 
                 var destino = !string.IsNullOrWhiteSpace(empresa?.Correo)
                     ? empresa!.Correo!.Trim()
@@ -289,7 +300,7 @@ public class PuntosAppService(
                 {
                     PlantillaId = plantilla.PlantillaId,
                     Destinatario = destino,
-                    Asunto = $"{plantilla.Asunto} {marca}",
+                    Asunto = $"{asunto} {marca}",
                     CuerpoHtml = body,
                     Estado = EstadoCorreo.Pendiente
                 }, ct);

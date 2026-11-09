@@ -644,18 +644,22 @@ public class ContratacionAppService(
         var plantilla = await plantillas.GetByCodigoAsync(codigo, ct);
         if (plantilla is null || !plantilla.Activo) return;
         var empresa = await empresas.GetByIdAsync(empresaId, ct);
-        var body = plantilla.CuerpoHtml
-            .Replace("{{Empresa}}", empresa?.RazonSocial ?? "")
-            .Replace("{{Persona}}", empresa?.RazonSocial ?? "")
-            .Replace("{{Puntos}}", puntosValor.ToString("0.00"))
-            .Replace("{{FechaVencimiento}}", vencimiento.ToString("yyyy-MM-dd"))
-            .Replace("{{SaldoDisponible}}", (await puntos.GetSaldoDisponibleAsync(empresaId, ct)).ToString("0.00"));
+        var saldo = await puntos.GetSaldoDisponibleAsync(empresaId, ct);
+        var valores = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Codigo"] = plantilla.Codigo,
+            ["Empresa"] = empresa?.RazonSocial ?? "",
+            ["Persona"] = empresa?.RazonSocial ?? "",
+            ["Puntos"] = puntosValor.ToString("0.00"),
+            ["FechaVencimiento"] = vencimiento.ToString("yyyy-MM-dd"),
+            ["SaldoDisponible"] = saldo.ToString("0.00")
+        };
         await correos.EnqueueAsync(new CorreoEnviado
         {
             PlantillaId = plantilla.PlantillaId,
             Destinatario = DestinatarioEmpresa(empresa),
-            Asunto = plantilla.Asunto,
-            CuerpoHtml = body,
+            Asunto = PlantillaRender.Render(plantilla.Asunto, valores),
+            CuerpoHtml = PlantillaRender.Render(plantilla.CuerpoHtml, valores),
             Estado = EstadoCorreo.Pendiente
         }, ct);
     }
@@ -678,18 +682,21 @@ public class ContratacionAppService(
             : string.Join("", items.Select(b =>
                 $"<li>{b.Nombre} — {b.CostoPuntos:0} puntos</li>"));
 
-        var body = plantilla.CuerpoHtml
-            .Replace("{{Empresa}}", empresa?.RazonSocial ?? "")
-            .Replace("{{Persona}}", empresa?.RazonSocial ?? "")
-            .Replace("{{Beneficios}}", $"<ul>{lista}</ul>")
-            .Replace("{{SaldoDisponible}}", saldo.ToString("0.00"));
+        var valores = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Codigo"] = plantilla.Codigo,
+            ["Empresa"] = empresa?.RazonSocial ?? "",
+            ["Persona"] = empresa?.RazonSocial ?? "",
+            ["Beneficios"] = $"<ul>{lista}</ul>",
+            ["SaldoDisponible"] = saldo.ToString("0.00")
+        };
 
         await correos.EnqueueAsync(new CorreoEnviado
         {
             PlantillaId = plantilla.PlantillaId,
             Destinatario = DestinatarioEmpresa(empresa),
-            Asunto = plantilla.Asunto,
-            CuerpoHtml = body,
+            Asunto = PlantillaRender.Render(plantilla.Asunto, valores),
+            CuerpoHtml = PlantillaRender.Render(plantilla.CuerpoHtml, valores),
             Estado = EstadoCorreo.Pendiente
         }, ct);
     }

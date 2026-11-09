@@ -1,6 +1,9 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { PageEvent } from '@angular/material/paginator';
+import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
 import { MatPaginatorModule } from '@angular/material/paginator';
 import { MatTableModule } from '@angular/material/table';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -12,6 +15,7 @@ import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { LoadingStateComponent } from '../../shared/loading-state.component';
 import { PageHeaderComponent } from '../../shared/page-header.component';
 import { StatusChipComponent } from '../../shared/status-chip.component';
+import { PlantillaFormDialogComponent } from './plantilla-form-dialog.component';
 
 @Component({
   selector: 'app-comunicaciones',
@@ -20,6 +24,9 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
     MatTableModule,
     MatTabsModule,
     MatCardModule,
+    MatButtonModule,
+    MatIconModule,
+    MatDialogModule,
     MatPaginatorModule,
     PageHeaderComponent,
     StatusChipComponent,
@@ -44,6 +51,15 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
                   <ng-container matColumnDef="activo">
                     <th mat-header-cell *matHeaderCellDef>Estado</th>
                     <td mat-cell *matCellDef="let p"><app-status-chip [status]="p.activo ? 'Activo' : 'Inactivo'" /></td>
+                  </ng-container>
+                  <ng-container matColumnDef="acciones">
+                    <th mat-header-cell *matHeaderCellDef>Acciones</th>
+                    <td mat-cell *matCellDef="let p">
+                      <button mat-stroked-button type="button" (click)="editarPlantilla(p)">
+                        <mat-icon>edit</mat-icon>
+                        Editar
+                      </button>
+                    </td>
                   </ng-container>
                   <tr mat-header-row *matHeaderRowDef="plantillaCols"></tr>
                   <tr mat-row *matRowDef="let row; columns: plantillaCols"></tr>
@@ -82,6 +98,7 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
 export class ComunicacionesComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly notify = inject(NotifyService);
+  private readonly dialog = inject(MatDialog);
 
   plantillas = signal<PlantillaCorreo[]>([]);
   correos = signal<CorreoEnviado[]>([]);
@@ -93,7 +110,7 @@ export class ComunicacionesComponent implements OnInit {
   correosPageSize = 50;
   loadingPlantillas = signal(true);
   loadingCorreos = signal(true);
-  plantillaCols = ['codigo', 'asunto', 'activo'];
+  plantillaCols = ['codigo', 'asunto', 'activo', 'acciones'];
   correoCols = ['dest', 'asunto', 'estado', 'intentos'];
 
   ngOnInit(): void {
@@ -129,6 +146,20 @@ export class ComunicacionesComponent implements OnInit {
         this.notify.error(apiErrorMessage(e, 'No se pudieron cargar correos.'));
       }
     });
+  }
+
+  editarPlantilla(p: PlantillaCorreo): void {
+    this.dialog
+      .open(PlantillaFormDialogComponent, {
+        width: '680px',
+        maxHeight: '92vh',
+        data: p,
+        autoFocus: false
+      })
+      .afterClosed()
+      .subscribe((saved) => {
+        if (saved) this.loadPlantillas();
+      });
   }
 
   onPlantillasPage(ev: PageEvent): void {
