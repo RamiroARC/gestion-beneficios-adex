@@ -66,7 +66,7 @@ import { AdexLogoComponent } from './adex-logo.component';
 
           <div class="topnav__actions">
             <button mat-icon-button type="button" class="topnav__notify" aria-label="Notificaciones" matBadge="0" matBadgeSize="small" matBadgeColor="warn" [matBadgeHidden]="true">
-              <mat-icon>notifications</mat-icon>
+              <mat-icon>notifications_none</mat-icon>
             </button>
 
             <button mat-button type="button" class="user-chip" [matMenuTriggerFor]="userMenu">
@@ -137,17 +137,17 @@ import { AdexLogoComponent } from './adex-logo.component';
       position: sticky;
       top: 0;
       z-index: 100;
-      background: var(--adex-blue);
+      background: linear-gradient(180deg, #004680 0%, var(--adex-blue) 100%);
       color: var(--adex-white);
-      box-shadow: 0 1px 3px rgb(0 59 112 / 18%);
+      box-shadow: 0 2px 12px rgb(0 42 82 / 24%);
     }
     .topnav__inner {
-      --gb-nav-item-height: 40px;
+      --gb-nav-item-height: 44px;
       display: flex;
       align-items: center;
       gap: var(--gb-space-2);
       min-height: var(--gb-toolbar-height);
-      padding: 0 var(--gb-space-4);
+      padding: 0 var(--gb-space-5);
       max-width: 100%;
     }
     .brand {
@@ -173,27 +173,32 @@ import { AdexLogoComponent } from './adex-logo.component';
       align-items: center;
       flex: 1 1 auto;
       flex-wrap: nowrap;
-      gap: 2px;
+      gap: 4px;
       min-width: 0;
-      overflow: hidden;
+      overflow-x: clip;
+      overflow-y: visible;
+      padding: 0 var(--gb-space-2);
     }
     .topnav__link {
+      position: relative;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 7px;
       height: var(--gb-nav-item-height);
       min-width: 0;
-      padding: 0 10px;
-      border-radius: var(--gb-radius-sm);
-      color: rgb(255 255 255 / 88%);
+      padding: 0 12px;
+      border-radius: 10px;
+      color: rgb(255 255 255 / 82%);
       text-decoration: none;
       font: var(--mat-sys-label-large);
+      font-weight: 500;
       white-space: nowrap;
       border: 0;
       background: transparent;
       cursor: pointer;
       letter-spacing: 0;
+      transition: background-color 200ms var(--gb-ease), color 200ms var(--gb-ease);
     }
     .topnav__link mat-icon {
       font-size: 18px;
@@ -203,11 +208,27 @@ import { AdexLogoComponent } from './adex-logo.component';
       color: inherit;
       flex-shrink: 0;
     }
-    .topnav__link:hover { background: rgb(255 255 255 / 10%); color: var(--adex-white); }
+    .topnav__link:hover { background: rgb(255 255 255 / 12%); color: var(--adex-white); }
+    .topnav__link:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px rgb(255 255 255 / 70%);
+    }
     .topnav__link--active,
     .topnav__link.router-link-active {
-      background: var(--adex-blue-active);
+      background: rgb(255 255 255 / 16%);
       color: var(--adex-white);
+      font-weight: 600;
+    }
+    .topnav__link--active::after,
+    .topnav__link.router-link-active::after {
+      content: '';
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: -11px;
+      height: 3px;
+      border-radius: 3px 3px 0 0;
+      background: #7cc0f2;
     }
     .topnav__actions {
       display: flex;
@@ -221,9 +242,14 @@ import { AdexLogoComponent } from './adex-logo.component';
       width: var(--gb-nav-item-height);
       height: var(--gb-nav-item-height);
       padding: 0;
+      border-radius: 50%;
+      transition: background-color 200ms var(--gb-ease);
     }
+    .topnav__notify:hover { background: rgb(255 255 255 / 12%); }
     .user-chip {
       --mdc-text-button-container-height: 48px;
+      --mdc-text-button-label-text-color: var(--adex-white);
+      --mat-text-button-state-layer-color: var(--adex-white);
       display: inline-flex;
       align-items: center;
       gap: var(--gb-space-2);
@@ -234,18 +260,38 @@ import { AdexLogoComponent } from './adex-logo.component';
       border-radius: 999px;
       letter-spacing: 0;
     }
+    .user-chip,
+    .user-chip .mdc-button__label,
+    .user-chip__meta strong,
+    .user-chip__meta small,
+    .user-chip__caret {
+      color: var(--adex-white) !important;
+    }
     .user-chip:hover { background: rgb(255 255 255 / 10%); }
     .user-chip__avatar {
-      width: 34px;
-      height: 34px;
+      position: relative;
+      width: 36px;
+      height: 36px;
       flex-shrink: 0;
       border-radius: 50%;
-      background: rgb(255 255 255 / 18%);
+      background: linear-gradient(135deg, #2f74ac 0%, #1a5a8a 100%);
+      box-shadow: 0 0 0 2px rgb(255 255 255 / 30%);
       display: grid;
       place-items: center;
       font: var(--mat-sys-label-large);
-      font-weight: 600;
+      font-weight: 700;
       line-height: 1;
+    }
+    .user-chip__avatar::after {
+      content: '';
+      position: absolute;
+      right: -1px;
+      bottom: -1px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #3ec46d;
+      border: 2px solid var(--adex-blue);
     }
     .user-chip__meta {
       display: flex;

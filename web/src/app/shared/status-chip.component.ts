@@ -7,11 +7,25 @@ import { MatChipsModule } from '@angular/material/chips';
   imports: [MatChipsModule],
   template: `
     <mat-chip [class]="toneClass()" disableRipple>
-      {{ label() }}
+      <span class="dot" aria-hidden="true"></span>{{ label() }}
     </mat-chip>
   `,
   styles: `
     :host { display: inline-flex; }
+    mat-chip {
+      --mdc-chip-container-height: 26px;
+      font-weight: 600;
+      font-size: 12px;
+    }
+    .dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      margin-right: 7px;
+      background: currentColor;
+      vertical-align: middle;
+    }
     .tone-success {
       --mdc-chip-elevated-container-color: var(--adex-success-container);
       --mdc-chip-label-text-color: var(--adex-success);
@@ -29,7 +43,7 @@ import { MatChipsModule } from '@angular/material/chips';
       --mdc-chip-label-text-color: var(--adex-info);
     }
     .tone-neutral {
-      --mdc-chip-elevated-container-color: var(--adex-bg);
+      --mdc-chip-elevated-container-color: var(--adex-surface-3);
       --mdc-chip-label-text-color: var(--adex-text-muted);
     }
   `

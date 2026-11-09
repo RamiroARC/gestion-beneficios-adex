@@ -1,4 +1,5 @@
 :root {
+  /* ---- Marca / paleta corporativa (sin cambios de identidad) ---- */
   --adex-blue: #003b70;
   --adex-blue-hover: #002a52;
   --adex-blue-active: #1a5a8a;
@@ -10,6 +11,13 @@
   --adex-bg: #f5f7fa;
   --adex-border: #d9dee5;
 
+  /* Superficies diferenciadas estilo MD3 / dashboard ejecutivo */
+  --adex-surface: #ffffff;
+  --adex-surface-2: #f8fafc;
+  --adex-surface-3: #f1f5f9;
+  --adex-border-soft: #e7ecf2;
+  --adex-blue-tint: #f3f7fb;
+
   --adex-success: #2e7d32;
   --adex-success-container: #e8f5e9;
   --adex-warning: #ed8b00;
@@ -19,6 +27,7 @@
   --adex-info: #1565c0;
   --adex-info-container: #e3f2fd;
 
+  /* ---- Escala de espaciado 8px ---- */
   --gb-space-1: 4px;
   --gb-space-2: 8px;
   --gb-space-3: 12px;
@@ -26,8 +35,23 @@
   --gb-space-5: 24px;
   --gb-space-6: 32px;
 
-  --gb-radius: 12px;
-  --gb-radius-sm: 8px;
+  /* ---- Radios (12-16px MD3) ---- */
+  --gb-radius: 16px;
+  --gb-radius-lg: 20px;
+  --gb-radius-md: 14px;
+  --gb-radius-sm: 12px;
+  --gb-radius-xs: 10px;
+
+  /* ---- Elevación: soft shadows tipo SaaS premium ---- */
+  --gb-shadow-xs: 0 1px 2px rgb(15 23 42 / 6%);
+  --gb-shadow-sm: 0 1px 2px rgb(15 23 42 / 5%), 0 2px 6px rgb(15 23 42 / 5%);
+  --gb-shadow-md: 0 2px 4px rgb(15 23 42 / 5%), 0 8px 20px rgb(15 23 42 / 7%);
+  --gb-shadow-lg: 0 6px 12px rgb(15 23 42 / 7%), 0 18px 40px rgb(15 23 42 / 10%);
+  --gb-shadow-focus: 0 0 0 3px rgb(0 59 112 / 16%);
+
+  /* ---- Transiciones ---- */
+  --gb-ease: cubic-bezier(0.2, 0, 0, 1);
+  --gb-transition: 200ms var(--gb-ease);
 
   --gb-success: var(--adex-success);
   --gb-success-container: var(--adex-success-container);
@@ -38,8 +62,8 @@
 
   --gb-sidebar-width: 248px;
   --gb-sidebar-collapsed: 76px;
-  --gb-toolbar-height: 64px;
-  --gb-control-height: 40px;
+  --gb-toolbar-height: 72px;
+  --gb-control-height: 44px;
   --gb-control-width: 220px;
-  --gb-topnav-height: 64px;
+  --gb-topnav-height: 72px;
 }

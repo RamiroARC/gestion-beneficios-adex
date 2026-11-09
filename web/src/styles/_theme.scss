@@ -25,16 +25,31 @@ html {
   --mat-sys-on-secondary-container: var(--adex-white);
   --mat-sys-surface: var(--adex-white);
   --mat-sys-on-surface: var(--adex-text);
+  --mat-sys-surface-variant: var(--adex-surface-3);
   --mat-sys-on-surface-variant: var(--adex-text-muted);
   --mat-sys-background: var(--adex-bg);
   --mat-sys-on-background: var(--adex-text);
-  --mat-sys-surface-container: var(--adex-bg);
-  --mat-sys-surface-container-low: var(--adex-white);
-  --mat-sys-surface-container-high: var(--adex-white);
+  --mat-sys-surface-container-lowest: var(--adex-white);
+  --mat-sys-surface-container-low: var(--adex-surface-2);
+  --mat-sys-surface-container: var(--adex-surface-2);
+  --mat-sys-surface-container-high: var(--adex-surface-3);
+  --mat-sys-surface-container-highest: var(--adex-surface-3);
   --mat-sys-outline: var(--adex-border);
-  --mat-sys-outline-variant: var(--adex-border);
+  --mat-sys-outline-variant: var(--adex-border-soft);
   --mat-sys-error: var(--adex-error);
   --mat-sys-on-error: var(--adex-white);
   --mat-sys-error-container: var(--adex-error-container);
   --mat-sys-on-error-container: var(--adex-error);
+
+  /* Niveles de elevación MD3 -> soft shadows */
+  --mat-sys-level0: none;
+  --mat-sys-level1: var(--gb-shadow-sm);
+  --mat-sys-level2: var(--gb-shadow-md);
+  --mat-sys-level3: var(--gb-shadow-md);
+  --mat-sys-level4: var(--gb-shadow-lg);
+  --mat-sys-level5: var(--gb-shadow-lg);
+
+  --mat-sys-corner-large: var(--gb-radius);
+  --mat-sys-corner-medium: var(--gb-radius-md);
+  --mat-sys-corner-small: var(--gb-radius-sm);
 }

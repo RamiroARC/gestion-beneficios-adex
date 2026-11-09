@@ -113,13 +113,16 @@
 
 .table-card {
   overflow: hidden;
-  border: 1px solid var(--adex-border);
-  box-shadow: 0 1px 2px rgb(0 59 112 / 6%);
+  border: 1px solid var(--adex-border-soft);
+  border-radius: var(--gb-radius);
+  box-shadow: var(--gb-shadow-sm);
 }
 
 mat-card[appearance='outlined'] {
-  border-color: var(--adex-border);
-  box-shadow: 0 1px 2px rgb(0 59 112 / 6%);
+  border-color: var(--adex-border-soft);
+  border-radius: var(--gb-radius);
+  box-shadow: var(--gb-shadow-sm);
+  transition: box-shadow var(--gb-transition), border-color var(--gb-transition);
 }
 
 .table-wrap {
@@ -180,11 +183,11 @@ mat-card[appearance='outlined'] {
 }
 
 .empresa-resumen-card {
-  border: 1px solid var(--adex-border);
-  border-radius: var(--gb-radius-sm);
-  padding: var(--gb-space-4);
+  border: 1px solid var(--adex-border-soft);
+  border-radius: var(--gb-radius);
+  padding: var(--gb-space-5);
   background: var(--adex-white);
-  box-shadow: 0 1px 2px rgb(0 59 112 / 6%);
+  box-shadow: var(--gb-shadow-sm);
 }
 
 @media (max-width: 1200px) {
@@ -259,4 +262,86 @@ mat-card[appearance='outlined'] {
     max-width: none;
     flex: 1 1 auto;
   }
+}
+
+/* ============================================================
+   Mejoras globales de interacción y forma (MD3 / SaaS premium)
+   Solo afectan apariencia: formas, sombras, hover/focus, transiciones.
+   ============================================================ */
+
+/* Botones con esquinas más suaves y transición elegante */
+.mat-mdc-button-base {
+  --mdc-filled-button-container-shape: var(--gb-radius-sm);
+  --mdc-outlined-button-container-shape: var(--gb-radius-sm);
+  --mdc-text-button-container-shape: var(--gb-radius-sm);
+  --mdc-protected-button-container-shape: var(--gb-radius-sm);
+  letter-spacing: 0;
+  transition: box-shadow var(--gb-transition), background-color var(--gb-transition),
+    transform var(--gb-transition);
+}
+
+.mat-mdc-raised-button:not(:disabled):hover,
+.mat-mdc-unelevated-button:not(:disabled):hover {
+  box-shadow: var(--gb-shadow-sm);
+}
+
+.mat-mdc-outlined-button {
+  --mdc-outlined-button-outline-color: var(--adex-border);
+}
+.mat-mdc-outlined-button:not(:disabled):hover {
+  background: var(--adex-blue-tint);
+}
+
+/* Foco accesible y visible en controles e enlaces */
+.mat-mdc-button-base:focus-visible,
+a:focus-visible,
+.link-cell:focus-visible,
+.mat-mdc-icon-button:focus-visible {
+  outline: none;
+  box-shadow: var(--gb-shadow-focus);
+  border-radius: var(--gb-radius-sm);
+}
+
+/* Campos de formulario: esquinas redondeadas consistentes */
+.mat-mdc-form-field {
+  --mdc-outlined-text-field-container-shape: var(--gb-radius-sm);
+}
+
+/* Diálogos modernos: más radio, sombra premium, aire */
+.mat-mdc-dialog-container {
+  --mdc-dialog-container-shape: var(--gb-radius-lg);
+}
+.mat-mdc-dialog-container .mdc-dialog__surface {
+  border-radius: var(--gb-radius-lg);
+  box-shadow: var(--gb-shadow-lg);
+}
+.mat-mdc-dialog-container .mat-mdc-dialog-title {
+  font: var(--mat-sys-title-large);
+  color: var(--adex-blue);
+}
+.mat-mdc-dialog-container .mat-mdc-dialog-content {
+  padding-top: var(--gb-space-2);
+}
+
+/* Menús y overlays con forma y sombra suave */
+.mat-mdc-menu-panel {
+  border-radius: var(--gb-radius-md) !important;
+  box-shadow: var(--gb-shadow-md) !important;
+}
+
+/* Tabs: indicador y espaciado más limpios */
+.mat-mdc-tab .mdc-tab__text-label {
+  letter-spacing: 0;
+}
+
+/* Animación suave de entrada para páginas montadas en el router */
+.main > * {
+  animation: gb-fade-in 220ms var(--gb-ease);
+}
+@keyframes gb-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .main > * { animation: none; }
 }

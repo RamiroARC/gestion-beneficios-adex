@@ -1,12 +1,28 @@
 .table-wrap {
+  .mat-mdc-table {
+    background: var(--adex-white);
+  }
+
+  /* Encabezado sticky y moderno */
   .mat-mdc-header-row {
-    background: var(--adex-blue);
+    background: var(--adex-surface-3);
+    position: sticky;
+    top: 0;
+    z-index: 2;
   }
 
   .mat-mdc-header-cell {
-    color: var(--adex-white);
+    color: var(--adex-text-muted);
     font: var(--mat-sys-label-large);
-    font-weight: 500;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    font-size: 11.5px;
+    border-bottom: 1px solid var(--adex-border-soft);
+  }
+
+  .mat-mdc-row {
+    transition: background-color var(--gb-transition);
   }
 
   .mat-mdc-row.row-selectable {
@@ -14,40 +30,65 @@
   }
 
   .mat-mdc-row:hover .mat-mdc-cell {
-    background: var(--adex-blue-soft);
+    background: var(--adex-blue-tint);
   }
 
   .mat-mdc-row.row-selected .mat-mdc-cell {
     background: var(--adex-blue-soft);
+    box-shadow: inset 3px 0 0 var(--adex-blue);
   }
 
   .mat-mdc-cell {
-    border-bottom-color: var(--adex-border);
+    border-bottom-color: var(--adex-border-soft);
     color: var(--adex-text);
+  }
+
+  .mat-mdc-row:last-child .mat-mdc-cell {
+    border-bottom: 0;
   }
 }
 
 .table-card mat-card,
 mat-card.table-card {
-  border: 1px solid var(--adex-border);
-  box-shadow: 0 1px 2px rgb(0 59 112 / 6%);
+  border: 1px solid var(--adex-border-soft);
+  border-radius: var(--gb-radius);
+  box-shadow: var(--gb-shadow-sm);
 }
 
 .btn-critical {
   --mdc-filled-button-container-color: var(--adex-red);
   --mdc-filled-button-label-text-color: var(--adex-white);
 }
+.btn-critical:not(:disabled):hover {
+  box-shadow: 0 4px 12px rgb(200 16 46 / 28%);
+}
+
+/* Chips de estado: forma pill moderna y peso de texto */
+mat-chip,
+.mat-mdc-chip {
+  --mdc-chip-container-shape-radius: 999px;
+  font-weight: 600;
+}
 
 .gb-snack-error {
   --mat-snackbar-container-color: var(--adex-error-container);
   --mat-snackbar-supporting-text-color: var(--adex-error);
+  --mdc-snackbar-container-shape: var(--gb-radius-sm);
 }
 
 .gb-snack-success {
   --mat-snackbar-container-color: var(--adex-success-container);
   --mat-snackbar-supporting-text-color: var(--adex-success);
+  --mdc-snackbar-container-shape: var(--gb-radius-sm);
 }
 
 .cdk-overlay-pane.mat-mdc-autocomplete-panel {
   z-index: 1100;
+}
+
+/* Paneles de autocomplete / select con forma y sombra coherentes */
+.mat-mdc-autocomplete-panel,
+.cdk-overlay-pane .mat-mdc-select-panel {
+  border-radius: var(--gb-radius-md) !important;
+  box-shadow: var(--gb-shadow-md) !important;
 }

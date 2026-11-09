@@ -40,9 +40,16 @@ export type KpiTone = 'default' | 'success' | 'warning' | 'danger' | 'info';
       display: flex;
       flex-direction: column;
       gap: var(--gb-space-2);
-      padding: var(--gb-space-4);
-      border-color: var(--adex-border);
-      min-height: 132px;
+      padding: var(--gb-space-5);
+      border-color: var(--adex-border-soft);
+      border-radius: var(--gb-radius);
+      box-shadow: var(--gb-shadow-sm);
+      min-height: 140px;
+      transition: box-shadow 200ms var(--gb-ease), transform 200ms var(--gb-ease);
+    }
+    .kpi:hover {
+      box-shadow: var(--gb-shadow-md);
+      transform: translateY(-2px);
     }
     .kpi__head {
       display: flex;
@@ -50,19 +57,19 @@ export type KpiTone = 'default' | 'success' | 'warning' | 'danger' | 'info';
       gap: var(--gb-space-3);
     }
     .kpi__icon {
-      width: 36px;
-      height: 36px;
+      width: 44px;
+      height: 44px;
       border-radius: var(--gb-radius-sm);
       display: grid;
       place-items: center;
-      background: var(--adex-blue);
-      color: var(--adex-white);
+      background: var(--adex-blue-soft);
+      color: var(--adex-blue);
       flex-shrink: 0;
     }
     .kpi__icon mat-icon {
-      width: 20px;
-      height: 20px;
-      font-size: 20px;
+      width: 22px;
+      height: 22px;
+      font-size: 22px;
     }
     .kpi__meta {
       flex: 1;
@@ -88,10 +95,11 @@ export type KpiTone = 'default' | 'success' | 'warning' | 'danger' | 'info';
       white-space: nowrap;
     }
     .kpi__value {
-      font: var(--mat-sys-headline-small);
-      font-weight: 600;
-      color: var(--adex-blue);
+      font: var(--mat-sys-headline-medium);
+      font-weight: 700;
+      color: var(--adex-text);
       line-height: 1.1;
+      letter-spacing: -0.01em;
     }
     .kpi__detail {
       font: var(--mat-sys-body-small);
@@ -110,19 +118,19 @@ export type KpiTone = 'default' | 'success' | 'warning' | 'danger' | 'info';
       border-radius: inherit;
       background: var(--adex-blue);
     }
-    .kpi--success .kpi__icon { background: var(--adex-success); }
+    .kpi--success .kpi__icon { background: var(--adex-success-container); color: var(--adex-success); }
     .kpi--success .kpi__value { color: var(--adex-success); }
     .kpi--success .kpi__progress-bar { background: var(--adex-success); }
     .kpi--success .kpi__badge { background: var(--adex-success-container); color: var(--adex-success); }
-    .kpi--warning .kpi__icon { background: var(--adex-warning); }
+    .kpi--warning .kpi__icon { background: var(--adex-warning-container); color: var(--adex-warning); }
     .kpi--warning .kpi__value { color: var(--adex-warning); }
     .kpi--warning .kpi__progress-bar { background: var(--adex-warning); }
     .kpi--warning .kpi__badge { background: var(--adex-warning-container); color: var(--adex-warning); }
-    .kpi--danger .kpi__icon { background: var(--adex-red); }
+    .kpi--danger .kpi__icon { background: var(--adex-error-container); color: var(--adex-red); }
     .kpi--danger .kpi__value { color: var(--adex-red); }
     .kpi--danger .kpi__progress-bar { background: var(--adex-red); }
     .kpi--danger .kpi__badge { background: var(--adex-error-container); color: var(--adex-error); }
-    .kpi--info .kpi__icon { background: var(--adex-info); }
+    .kpi--info .kpi__icon { background: var(--adex-info-container); color: var(--adex-info); }
     .kpi--info .kpi__value { color: var(--adex-info); }
     .kpi--info .kpi__progress-bar { background: var(--adex-info); }
     .kpi--info .kpi__badge { background: var(--adex-info-container); color: var(--adex-info); }
