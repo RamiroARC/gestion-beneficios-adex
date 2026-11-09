@@ -6,6 +6,14 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Fija explícitamente el WebRoot a <ContentRoot>\wwwroot y garantiza que la carpeta exista.
+// En IIS in-process, si 'wwwroot' no existe al arrancar, WebRootPath queda null y ni los
+// archivos estáticos ni el fallback SPA se sirven (login/deep-links darían 404). Crear la
+// carpeta y fijar la ruta hace el arranque determinista aunque el frontend se copie después.
+var webRoot = System.IO.Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
+System.IO.Directory.CreateDirectory(webRoot);
+builder.Environment.WebRootPath = webRoot;
+
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
